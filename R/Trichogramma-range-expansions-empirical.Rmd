@@ -49,6 +49,7 @@ Niter=2000
 Nwarmup=1000
 Nchains=4
 
+library(here)
 ### use janitor package to standardise case (also be consistent in newly generated variables)
 ```
 
@@ -107,19 +108,13 @@ In the present analysis, we use two sources of information:
 ```{r load-dataset, eval=FALSE}
 
 ###import raw datasets
-raw_dynamics<- read_delim("D:/Maxime/Documents/POSTDOC INRA SOPHIA/DYNAMIQUES/RAWRESULTS_obs.txt",
-                     "\t", escape_double = FALSE, col_types = cols(Pbis = col_number()), trim_ws = TRUE)
+raw_dynamics<- read_csv(here("data/Trichogramma_dynamics.csv"))
 
-raw_genetics <- read_delim("D:/Maxime/Documents/POSTDOC INRA SOPHIA/GENET/Tricho_Aline_G0_G4_G8_G12.csv", 
-                   ";", escape_double = FALSE, col_types = cols(P100 = col_character(), 
-                                                                P112 = col_character(), P15 = col_character(), 
-                                                                P17 = col_character(), P24 = col_character(), 
-                                                                P39 = col_character(), P45 = col_character(), 
-                                                                P73 = col_character(), P75 = col_character(), 
-                                                                P76 = col_character(), P84 = col_character(), 
-                                                                P99 = col_character()), trim_ws = TRUE)
+raw_genetics <- raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
+                         col_types = cols(.default=col_character())
+)
 ##forcing locus columns to be character otherwise some important leading zeroes are lost ( a 082082 individual _homozygote with two "082" alleles_ becomes 82082, 000000 becomes 0)
-## there are other way to do it (see e.g. stringr::str_pad()) but best to do it right at the outset
+## there are other way to do it by doing it downscript (see e.g. stringr::str_pad()) but best to do it right at the outset
 ```
 
 
