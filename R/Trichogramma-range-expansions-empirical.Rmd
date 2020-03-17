@@ -110,7 +110,7 @@ In the present analysis, we use two sources of information:
 ###import raw datasets
 raw_dynamics<- read_csv(here("data/Trichogramma_dynamics.csv"))
 
-raw_genetics <- raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
+raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
                          col_types = cols(.default=col_character())
 )
 ##forcing locus columns to be character otherwise some important leading zeroes are lost ( a 082082 individual _homozygote with two "082" alleles_ becomes 82082, 000000 becomes 0)
@@ -274,7 +274,7 @@ bf_validate_estimated=bf(Neggs_estimated|trials(450)+subset(Macro !="MacroG13")~
 mod_validate=brm(
   mvbf(bf_validate_obs+bf_validate_estimated),
   data=data_validate,
-  chains=Nchains,iter=Niter*4,warmup=Nwarmup*4,prior=prior_validate,seed=42
+  chains=Nchains,iter=Niter,warmup=Nwarmup,prior=prior_validate,seed=42
   )
 ```
 
