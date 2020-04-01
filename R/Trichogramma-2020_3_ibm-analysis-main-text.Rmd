@@ -1,0 +1,13 @@
+---
+title: 'Trichogramma range expansions (genetics and dynamics): 3- individual-based model, analysis (main text)'
+author: "Maxime Dahirel"
+date: "31/03/2020"
+output: 
+  html_document:
+    theme: yeti
+    toc: TRUE
+    toc_float: TRUE
+    code_download: TRUE
+editor_options: 
+  chunk_output_type: console
+---

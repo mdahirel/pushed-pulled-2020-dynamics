@@ -1,0 +1,663 @@
+---
+title: 'Trichogramma range expansions (genetics and dynamics): 1- empirical data,  main text'
+author: "Maxime Dahirel"
+date: "31/03/2020"
+output: 
+  html_document:
+    theme: yeti
+    toc: TRUE
+    toc_float: TRUE
+    code_download: TRUE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-packages, warning = FALSE, message = FALSE}
+####0: PACKAGE LOADING ##to check, are all actually needed in final version?
+library(MASS) #for mvrnor
+library(arm)  #for inv_logit
+library(matrixStats)
+
+library(tidyverse)
+library(tidyr)
+
+library(coda)
+library(rstan)
+library(bayesplot)
+library(brms)
+rstan_options(auto_write = TRUE)
+options(mc.cores = 2)
+library(brms)
+
+library(tidybayes)
+
+library(modelr)
+library(RColorBrewer)
+library(cowplot)
+library(ggrepel)
+library(patchwork)
+
+library(vegan)
+library(RVAideMemoire)
+library(matrixStats)
+library(readr)
+library(adegenet)
+library(PopGenReport)
+library(pegas)
+library(poppr)
+library(ggthemes)
+
+Niter=2000
+Nwarmup=1000
+Nchains=4
+
+library(here)
+### use janitor package to standardise case (also be consistent in newly generated variables)
+```
+
+# TO DO
+
+Nearly everything is done and clean, but still a few things to perfect:
+
+- check priors for parameters that have been multiplied by *X* to make them fit within "general priors" (and all the others)
+- find a valid colour code (reminder: need 6 different colours, a subgroup of 4 for treatment plots and a subgroup of 2 for front/core plots, ideally qualitative scales, colourblind- and BW-friendly at least within each subgroup)
+- maybe more markdown comments?
+- clean and tidy code, re-arrange order of lines in ggplot code
+- check all loaded packages are still actually useful
+
+## would be nice to do but probably won't for this paper 
+- move model_-_front to distribution actually accounting for the discrete nature of front locations values (integer only)? Doing it with Poisson is trading an approximation for another, because Poisson is overdispersed for these data (you can change mod_front to Poisson and check this with pp_check()). A Conway Maxwell Poisson may solve this, but not 100% implemented yet in brms, and maybe overkill https://discourse.mc-stan.org/t/brms-and-conway-maxwell-poisson-distribution/7368/15
+
+# Introduction
+
+## Aims of project 
+To understand how the position of a range expansion on a (putative) pushed/pulled gradient influences its spread dynamics and evolution
+
+## General methods (see preprint or article for full details)
+
+24 experimental linear landscapes were created, consisting in patches ("bottles") connected by tubes. Each patch contains ~450 host eggs as resource, replenished at each generation.
+
+*Trichogramma brassicae* individuals were introduced in the initial patch, and the experiment ran for 14 generations, counting the starting individuals. 
+
+At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information (this document), and as sources of further offspring for another experiment. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
+
+We expected that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties:
+
+```{r proof-of-principle, echo = FALSE}
+#proof of principle that reduced connectivity restricts dispersal at low N, due to properties of the binomial distribution
+expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
+mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
+ ggplot()+
+  geom_line(aes(x=N,y=1-pbinom(0,N,dispersal.rate),col=dispersal.rate,group=dispersal.rate),size=1.2)+
+  scale_y_continuous(name="Probability that at least one individual disperses")+
+  scale_x_log10(name="Population size before dispersal phase")+
+  scale_color_gradient(name="Mean dispersal rate",low="black",high="grey60") +
+  geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=dispersal.rate),nudge_x = -2)+
+  theme_bw()+
+  theme(legend.position = "none")
+### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
+### when even with low dispersal founding units were probably rarely below the 100s
+```
+
+As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "control" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
+
+We have obtained two sources of information:
+
+- __genetic information__ is obtained by genotyping adult wasps every ~4 generations (release generation, G4,8,12) at 19 microsatellite loci.
+- __population dynamics information__ (population size and spread of the expansion) is obtained by photographing egg plates every generation right when they become brown-black if parasitized. Photographs are then analysed using ImageJ and Codicount to obtain estimated % of parasitism. Each image is analysed by 4 macros trained on different data ; patches are scanned by humans prior to photographs, patches with no black eggs are directly counted as zeros and thus not present in the dataset. In the main text of the manuscript (and the present document), we only use this file to get information on front location, and indirect information about dispersal by looking at where eggs are laid by the Generation 0 wasps.
+
+# Analysis
+
+## Loading datasets
+
+```{r load-dataset, eval=FALSE}
+
+###import raw datasets
+raw_dynamics<- read_csv(here("data/Trichogramma_dynamics.csv"))
+
+raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
+                         col_types = cols(.default=col_character())
+)
+##forcing locus columns to be character otherwise some important leading zeroes are lost ( a 082082 individual _homozygote with two "082" alleles_ becomes 82082, 000000 becomes 0)
+## there are other way to do it by doing it downscript (see e.g. stringr::str_pad()) but best to do it right at the outset
+```
+
+
+The `raw_dynamics` dataset contains the following variables:
+
+- `Generation` : number of generations since release into experimental landscapes (initially released individuals = 0)
+
+- `Bloc` : experimental setup block, not used
+
+- `Macro` : 4 macros used in CODICOUNT to estimate parasitism rates (see manuscript). Macro name indicates the generation on which the amcro was initially trained
+
+- `Image` : file name, structured as `[genetic mix ID][Treatment ID][Replicate sub-ID]_[Patch ID]`. Replicate sub-ID are non-unique (they are repeated across Mix and Treatments), patch ID correspond to distance from the release patch (0 = release patch).
+
+- `Total_surface`, `B` `H` and `P` : photograph surface (in pixels), as well ass number of pixels classified as Background, Healthy and Parasitised
+
+- `P_black` : `P` /(`P` + `H`), parasitism rate
+
+- `obs_count` : number of parasitised eggs, human-counted. Used for validating the CODICOUNT macros
+
+The `raw_genetics` dataset has two types of variables:
+
+- `ID` : a unique individual ID structured as `G[generation]_[genetic mix ID][Treatment ID]_[Replicate sub-ID]_[Individual sub-ID]` . Individual and replicate sub-ID are non-unique (they are repeated across Mix and Treatments)
+
+- `P[X]` where [X] is a number (19 columns, 6-digit strings) : Individual genotype at microsatellite locus `P[X]`. Each allele is described by a 3-digit string, so each value corresponds to the 2 alleles pasted together
+
+
+## Data preprocessing
+
+We first play with the dynamics dataset. From the raw dataset we want to produce two ready-to-analyse datasets:
+
+- (1) `data_G0`: used to estimate how many offspring are produced in "new" patches during the 1st generation. This allows us to check indirectly whether the setup truly limit connectedness. We can only do that at the start of the experiment as it is only then we know all parents were born/released in the same patch; afterward impossible to know how many parent patches contribute to these.  
+
+- (2) `data_front` : used to estimate how fast the wave fronts advance
+
+We first need to make an intermediate dataset where we extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (control) and `PS` (restricted connectedness) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results:
+
+```{r data-popsize-temp, eval=FALSE}
+data_popsize_temp<- raw_dynamics %>% 
+  mutate(Mix= as.numeric(str_sub(Image,1,1)),
+         Treatment = str_sub(Image,2,3),
+         Replicate = as.numeric(str_sub(Image,4,4)),
+         Patch = as.numeric(str_sub(Image,6,7))
+  ) %>% 
+  #no further processing needed; we exploit the fact that chars 6&7 are either digit dot (patchs 0 to 9)
+#or digit-digit (patches 10 and beyond)
+## as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
+  mutate(landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% #a unique replicate ID
+  mutate(Peggs_est=P/(P+H), ## proportion of pixels counted as parasitised (estimated)
+         spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep=""), # a unique ID for each replicate x patch x generation combination
+         Mix = factor(Mix)) %>% 
+  mutate(Treatment = fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
+```
+  
+  
+### Dataset G0: spread of eggs laid by the original generation
+
+Once this is done, we can select patches where Generation 0 laid eggs (i.e. Generation 1 egg plates), and use information about parasitism rate in each to estimate `distmean` the mean distance between egg and release site in each landscape (and for each `Macro`): 
+
+```{r data-G0, eval = FALSE}
+###a subdataset only containing info on G0
+data_G0 <- filter(data_popsize_temp,Generation==1 & Patch<=4) %>%  
+  ##only patches 0 to 4 are available at start (adding "Patch <=4" above should not be necessary, but it makes it explicit)
+  select(landscapeID,Mix,Treatment,Patch,Peggs_est,Macro) %>% 
+  ungroup() %>% 
+  pivot_wider(.,names_from="Patch",values_from=c("Peggs_est"),names_prefix = "P") %>% 
+  filter(is.na(P0)==FALSE) %>%   ## remove the row with the one macro with missing info for "resident" eggs (can't estimate dispersal)
+  mutate(P1=replace_na(P1,0)) %>% 
+  mutate(P2=replace_na(P2,0)) %>% 
+  mutate(P3=replace_na(P3,0)) %>% 
+  mutate(P4=replace_na(P4,0))  %>% 
+  mutate(Pall=(P0+P1+P2+P3+P4)) %>% 
+  mutate(distmean = (1*P1+2*P2+3*P3+4*P4) / Pall, ## mean distance from release
+         scale_Pall = scale(Pall)) %>%   
+  mutate(jitteredTRT=jitter(as.numeric(factor(Treatment)))) %>% ## for pretty plotting
+  group_by(landscapeID) %>% mutate(jitteredTRT=mean(jitteredTRT)) %>%  ##ensures same jitter for same measure from different macros
+  ungroup()
+```
+
+Note that `distmean` is a proxy of dispersal/ connectivity, **not** an actual dispersal distance, at least in the sense of "average distance travelled by dispersing individuals" /* . Indeed, the number of eggs laid is not necessarily proportional to number of famales, as it may depend on phenotype (dispersers/ residents), and on available hosts (which are more abundant *per capita* farther from the release in more empty patches). 
+
+/* But it is a dispersal distance in the sense of "average distance between one generation and the next" (it's complicated, ugh)
+
+### Dataset front: speed of the advancing range expansions
+
+Here we use the fact that only patches with parasitoids are in the dataset to get the front location in each landscape at each time: it is simply the location of the farthest colonised patch (+ some minor tidying up, again):
+
+```{r data-front, eval = FALSE}
+data_front <- data_popsize_temp %>% 
+  group_by(landscapeID,Mix,Treatment,Generation) %>%
+  summarise(front = max(Patch)) %>% 
+  ungroup() %>% 
+  group_by(landscapeID) %>% 
+  arrange(Generation) %>% 
+  complete(nesting(Mix,Treatment,landscapeID),
+                       Generation=0:13,fill=list(front=0)) %>% ##just so we have a G0 x0 point (i.e. release) for the plots
+  ungroup()
+
+```
+
+
+### Dataset genetics: dynamics of neutral genetic diversity during expansion
+
+Then we turn to the genetics data. We're only going to generate one analysis dataset here, by converting individual microsatellite info into population/patch-level multilocus expected heterozygosity data, as our measure of genetic diversity.
+
+As with the previous dataset, we first need to make an intermediate dataset where we extract useful variables from the `Image` string, and recode some other variables:
+
+```{r data-genetics-1, eval=FALSE}
+
+### STEP 1 extract relevant variables from the ID string
+
+data_genetics<-raw_genetics %>% 
+  mutate( ### info on variables is contained in each sample ID
+    Generation=str_extract(ID,"G0|G4|G8|G12"),
+    Mix=str_extract(ID,"_1P|_2P|_3P"),
+    Treatment=str_extract(ID,"PL|PS"),
+    Replicate=str_extract(ID,"L_[:digit:]|S_[:digit:]"),
+    Location=str_extract(ID,"C|F")
+  ) %>% 
+  mutate(
+    Generation=as.numeric(str_extract(Generation,"0|4|8|12")),
+    Mix=as.numeric(str_extract(Mix,"1|2|3")),
+    Replicate=as.numeric(str_extract(Replicate,"[:digit:]")),
+    Location=fct_recode(Location,core="C",front="F")
+  ) %>% 
+  mutate(Location=as.character(Location)) %>% 
+  mutate(Location=replace_na(Location,"origin")) %>% ## samples that are neither core nor front are from the origin
+  mutate(Location=factor(Location),landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% 
+  mutate(spacetimeID=paste(landscapeID,"_Generation",Generation,"_Location",Location,sep=""))
+```
+
+Then we convert allele columns in a format that allows us to calculate expected heterozygosity (STEP 2 below) and do that (+ some tidying, STEP 3 below):
+
+```{r data-genetics-2, eval=FALSE}
+### STEP 2 isolate the genetics markers
+genmat<- df2genind(select(data_genetics,starts_with("P")),####all allelic columns start with a "P"
+            ncode=3,ind.names=data_genetics$ID,pop=data_genetics$spacetimeID) #ncode=3 bc 3 characters for one allele
+
+#sum(rowSums(genmat@tab)<38) ## quality check: should be zero, indicating all individuals have 2 alleles for each of the 19 loci
+
+### STEP 3 generate summary of all other columns ; one row = one sampled patch
+data_genetics <- data_genetics %>%   
+  group_by(spacetimeID) %>% 
+  mutate(Nsampled = length(Location))%>%
+  ungroup() %>% 
+  select(-starts_with("P"), -ID) %>% 
+  distinct() %>% 
+  inner_join(
+    tibble(Hexp=Hs(genmat),spacetimeID=names(Hs(genmat)))
+    ) %>% 
+  mutate(is.front=-0.5*(Location=="core")+0.5*(Location=="front"), ## dummy variable to make interpreting interaction coefs easier
+         Treatment=fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
+
+```
+
+Our metric of genetic diversity (expected heterozygosity) is stored in `Hexp`.
+
+## Data analysis
+
+Now we have everything we need, we can fit some models! (see manuscript for details)
+
+### Dataset G0: spread of eggs laid by the original generation
+
+We fit a model assuming the "true" mean distance in each landscape depends on treatment, and that we can only observe it through macros/observers that are each systematically biased, but combined fall back on the underlying true value. The model uses a Beta distribution to account for the fact distances cannot exceed 4 patches from release :
+
+```{r model-g0, eval=FALSE}
+
+mod_G0 <- brm(bf(distmean/4~0+Treatment+(1|Macro), 
+                 ###divided by 4 because it's the maximal possible distance possible at G0
+        nlf(phi~1/invphi),
+        invphi~1),
+        data=data_G0,family=Beta(link_phi="identity"),
+        iter=2000,chains=4,
+        prior=c(
+          set_prior("normal(0,1.5)",class="b"),
+          set_prior("normal(0,1)",class="sd"),
+          set_prior("normal(0,1)",nlpar="invphi",lb=0)
+        ),
+        control=list(adapt_delta=0.99),seed=42)
+```
+
+
+```{r summary-model-G0, eval=FALSE}
+summary(mod_G0)
+#great, but gives mean and quantile intervals as summary stats.
+#what if we want something else, like higher posterior density intervals??
+# (should be very similar for most fixed model parameters, as they are approx. Gaussian, but might differ for variance)
+
+summary_G0 <- mod_G0 %>%
+  posterior_samples() %>%
+  select(starts_with(c("Intercept", "b_", "sd_", "invphi"))) %>%
+  pivot_longer(everything()) %>%
+  group_by(name) %>%
+  mean_hdi() %>% 
+  print(n=Inf)
+
+mcmc_rank_overlay(mod_G0, pars = summary_G0$name)
+
+###prediction intervals around each point
+ppc_ribbon(yrep=predict(mod_G0,summary=FALSE),
+           x=rank(predict(mod_G0)[,1]),
+           y=data_G0$distmean/4,
+           prob = 0.5, prob_outer=0.95)
+```
+
+### Dataset front: speed of the advancing range expansions
+
+We here assume each front initially advances at a speed that may not be the asymptotic/equilibrium speed (which is what interests us), due to various stochastic reasons, but end up converging to it more or less exponentially:
+
+```{r model-front, eval = FALSE}
+
+bf_front <- bf(front~log(speed*Generation), 
+               nlf(speed~speedasym+(speedstart-speedasym)*exp(-(Generation-1)*rate)),
+               ##Generation - 1 because moving the startspeed away from t0 (where it doesn't actually exist) to t1 stabilises everything
+               nlf(rate~exp(lograte)),
+               nlf(speedasym~exp(logspeedasym)),
+               nlf(speedstart~exp(logspeedstart)),
+           logspeedasym~0+Treatment+(1|1|landscapeID),
+           logspeedstart~0+Treatment+(1|1|landscapeID),
+           lograte~0+Treatment+(1|1|landscapeID),
+           family=lognormal,nl=TRUE)
+
+prior_front <- c(
+          set_prior("normal(0,1)",nlpar=c("logspeedasym","logspeedstart"),class="b"),
+          set_prior("normal(0,1)",nlpar=c("lograte"),class="b"),
+          set_prior("normal(0,1)",nlpar=c("logspeedasym","lograte","logspeedstart"),class="sd"),
+          set_prior("normal(0,1)",class="sigma"),
+          set_prior("lkj(2)",class="cor")
+        )
+
+mod_front=brm(bf_front, 
+        data=subset(data_front,Generation>0),chains=Nchains,iter=Niter,warmup=Nwarmup,
+        prior= prior_front,control=list(adapt_delta=0.95,max_treedepth=10),
+        seed = 42)
+
+
+```
+
+
+```{r summary-model-front, eval = FALSE}
+
+summary(mod_front)
+
+summary_front <- mod_front %>%
+  posterior_samples() %>%
+  select(starts_with(c("Intercept", "b_", "sd_", "cor_", "sigma"))) %>%
+  pivot_longer(everything()) %>%
+  group_by(name) %>%
+  mean_hdi() %>% 
+  print(n=Inf)
+
+mcmc_rank_overlay(mod_front, pars = summary_front$name)
+
+###prediction intervals around each point
+ppc_ribbon(yrep=predict(mod_front,summary=FALSE),
+           x=rank(predict(mod_front)[,1]),
+           y=subset(data_front$front,data_front$Generation>0),
+           prob = 0.5, prob_outer=0.95)
+
+## TO DO for correlations and for sigma
+```
+
+### Dataset genetics: dynamics of neutral genetic diversity during expansion
+
+Our model here is rooted in theory (see manuscript for references) and assumes genetic diversity declines exponentially through time. The decay rate parameter is our parameter of interest here:
+
+```{r model-genetics, eval = FALSE}
+
+
+prior_genetics=c(
+  set_prior("normal(0,1.5)",nlpar=c("logitH0"),class="b"),
+  set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
+  set_prior("normal(0,1)",nlpar=c("logdecay","logitH0"),class="sd"),
+  set_prior("lkj(2)",class="cor")
+)
+bf_genetics=bf(Hexp~log(H0*exp(-decay*Generation)),
+               nlf(H0~inv_logit(logitH0)),
+               nlf(decay~exp(logdecay)/10),
+               logitH0~1+(1|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               family=student("log"),nl=TRUE)
+
+mod_genetics=brm(bf_genetics,
+                 data=data_genetics,
+                 chains=Nchains,iter=Niter*2,warmup=Nwarmup*2,
+                 prior=c(prior_genetics,
+                         set_prior("normal(0,1)",class="sigma"),
+                         set_prior("gamma(2,0.1)",class="nu")),
+                 seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
+)
+
+#the gamma(2, 0.1) prior for nu follows again recommendations from the Stan wiki
+#https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
+```
+
+```{r summary-model-genetics, eval = FALSE}
+summary(mod_genetics)
+
+summary_genetics <- mod_genetics %>%
+  posterior_samples() %>%
+  select(starts_with(c("Intercept", "b_", "sd_", "cor_", "sigma","nu"))) %>%
+  pivot_longer(everything()) %>%
+  group_by(name) %>%
+  mean_hdi() %>% 
+  print(n=Inf)
+
+mcmc_rank_overlay(mod_genetics, pars = summary_genetics$name)
+
+###prediction intervals around each point
+ppc_ribbon(yrep=predict(mod_genetics,summary=FALSE),
+           x=rank(predict(mod_genetics)[,1]),
+           y=data_genetics$Hexp,
+           prob = 0.5, prob_outer=0.95)
+```
+
+But heterozygosity is always between 0 and 1. So why use a log-Student model, and not simply a Beta model?  
+Well, we did both, and the former clearly outperforms the latter, maybe because it accounts better for rare outliers (which would be expected due to sampling when selecting individuals before genotyping, or due to the expansion process itself):
+
+```{r model-genetics-beta, eval = FALSE}
+bf_genetics2=bf(Hexp~log(H0*exp(-decay*Generation)),
+               nlf(H0~inv_logit(logitH0)),
+               nlf(decay~exp(logdecay)/10),
+               logitH0~1+(1|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               nlf(phi~1/invphi),
+               invphi~1,
+               family=Beta(link_phi="identity"),nl=TRUE)
+
+mod_genetics2=brm(bf_genetics2,
+                 data=data_genetics,
+                 chains=Nchains,iter=Niter*2,warmup=Nwarmup*2,
+                 prior=c(prior_genetics,
+                         set_prior("normal(0,1)",nlpar="invphi",lb=0)),
+                 seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
+)
+
+loo_student <- loo(mod_genetics)
+loo_beta <- loo(mod_genetics2,reloo=TRUE)
+loo_compare(loo_student, loo_beta) 
+##despite Beta a priori a better spec, log-Student has better predictive performance 
+##see https://mc-stan.org/bayesplot/reference/PPC-loo.html for further possibilities of investigation
+#####
+
+```
+
+still, by forcing H0 to be between 0 and 1 using a logit transformation, we still ensure no "weird" values (e.g. > 1) are predicted by the log-Student model anyway
+
+## Postprocessing : plots and summaries
+
+Now we can draw the figures associated with these models, and maybe get back some useful comparisons at the same time?
+
+```{r color-palettes, eval=FALSE}
+
+TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so it can also be used for simulation results
+frontcorePalette <- c("#000000", "#E69F00", "#56B4E9") # 3 colors, for origin (black), front and core patches
+
+```
+
+### Dataset G0: spread of eggs laid by the original generation
+
+
+```{r figure-G0, eval=FALSE}
+
+newdata <- data_G0 %>% 
+  mutate(Macro=Macro[1]) %>%  #it's just a placeholder, we plot the posterior for the "true" (grand) mean distance, without random effects
+  select(Macro, Treatment) %>% 
+  distinct()
+
+## these averages are just indicative and for plotting purposes
+data_G0_avg <- data_G0 %>% 
+  group_by(landscapeID,Treatment)%>%  
+  summarise(distmean=mean(distmean),
+            jitteredTRT=mean(jitteredTRT)) %>% ungroup()
+
+## the main plot                                                           
+p1 <-newdata %>% 
+  add_fitted_draws(mod_G0,re_formula=NA) %>% 
+  ggplot()+
+  stat_eye(aes(x=Treatment,y=.value*4,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
+  ## we put both observed points (by macros) and the indicative averages for each each landscape
+  geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
+  geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
+  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_colour_manual(values=TRTpalette[c(1,4)])+
+  scale_x_discrete("")+
+  scale_y_continuous("Mean egg-laying distance from release site (patches)",limits=c(0,2.2))+
+  theme_bw()
+
+## a subplot showing the difference between treatments. Keep it or put this info in text?
+p2<- newdata %>% 
+  add_fitted_draws(mod_G0,re_formula=NA) %>% 
+  ungroup() %>% 
+  compare_levels(variable=.value,by=Treatment) %>% 
+  ggplot()+
+  stat_eye(aes(x=Treatment,y=.value*4),.width=c(0.66,0.95),fill="grey",point_interval = mean_hdi)+
+  scale_x_discrete("",labels="")+
+  scale_y_continuous("Difference between treatments",
+                     limits=c(0,2.2)-4*invlogit(fixef(mod_G0)["Treatmentcontrol","Estimate"])) + ##so the "difference" subplot is aligned with the main
+  geom_hline(yintercept=0, lty=2) +
+  theme_bw()
+
+p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
+  theme(legend.position="none")
+
+
+##aside: very roughly showing that there is indeed consistent macro-level bias even on distances
+## data_G0 %>% group_by(landscapeID) %>% mutate(DD=mean(distmean)) %>% ggplot()+ geom_boxplot(aes(x=Macro,y=distmean/DD))
+## likely reason: because macro that over/underestimates parasitism rates will over/underestimate # of eggs in "other patches" so over/underestimate distances
+  
+```
+
+
+### Dataset front: speed of the advancing range expansions
+
+```{r figure-front, eval = FALSE}
+
+## PART 1 : advance of the fronts through time, predicted and observed
+p1 <- data_front %>% 
+  ungroup() %>% 
+  mutate(landscapeID= landscapeID[1]) %>% 
+  select(Treatment,landscapeID) %>% 
+  distinct() %>% 
+  expand_grid(Generation=(1:130)/10) %>% 
+  add_fitted_draws(mod_front,re_formula=NA) %>% 
+  mutate(.value_front=.value) %>% 
+  group_by(Generation,Treatment) %>% 
+  ggplot()+
+  stat_lineribbon(aes(x=Generation,y=.value_front,fill=Treatment),.width=0.95,alpha=0.3,point_interval = mean_hdi)+
+  geom_line(data=data_front,aes(x=Generation,y=front,group=landscapeID,col=Treatment))+
+  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_colour_manual(values=TRTpalette[c(1,4)])+
+  scale_y_continuous("Front location (patches from release)")+
+  facet_wrap(~Treatment)
+  
+  
+## PART 2: posterior of the key parameter: asymptotic speed 
+p2 <- data_front %>% 
+  ungroup() %>% 
+  mutate(landscapeID= landscapeID[1],Generation=1) %>% 
+  select(Treatment,landscapeID,Generation) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logspeedasym",re_formula=NA) %>% 
+  mutate(.value=exp(.value)) %>% ##backtransformation
+  ggplot()+
+  geom_eye(aes(x=Treatment,y=.value,fill=Treatment),slab_alpha=0.3,point_interval = mean_hdi)+
+  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_x_discrete("Landscape type")+
+  scale_y_continuous("Asymptotic velocity (patches per generation, posterior)")
+
+
+
+p1 / p2 + plot_annotation(tag_levels="A") + plot_layout(guides="collect") & theme_bw() &
+  theme(legend.position="none")
+
+
+data_front %>% 
+  ungroup() %>% 
+  mutate(landscapeID= landscapeID[1],Generation=1) %>% 
+  select(Treatment,landscapeID,Generation) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logspeedasym",re_formula=NA) %>% 
+  mutate(.value=exp(.value)) %>% ##backtransformation
+  compare_levels(variable=.value,by=Treatment) %>% 
+  mean_hdi()
+```
+
+
+### Dataset genetics: dynamics of neutral genetic diversity during expansion
+
+```{r figure-genetics, eval = FALSE}
+
+
+p1 <- data_genetics %>% 
+  mutate(landscapeID = landscapeID[1]) %>% 
+  select(Treatment,is.front,Location,landscapeID) %>% 
+  distinct() %>% 
+  filter(is.front!=0) %>% 
+  expand_grid(Generation=c(0:120)/10) %>%  
+  add_fitted_draws(mod_genetics,re_formula=NA) %>% 
+  ggplot()+
+  stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
+  geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+
+  scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
+  scale_y_continuous(name = "Genetic diversity (Hexp)") +
+  scale_x_continuous(name = "Generations since start") +
+  facet_wrap(~Treatment) + 
+  theme_bw()
+
+p2<- data_genetics %>%  
+  mutate(landscapeID = landscapeID[1], Generation = 1) %>% 
+  select(landscapeID,is.front,Location,Treatment,Generation) %>% 
+  distinct() %>% 
+  add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
+  mutate(.value=exp(.value)) %>% 
+  filter(is.front!=0) %>% 
+  ggplot()+
+  geom_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
+  scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
+  facet_wrap(~Treatment)+
+  scale_y_continuous("Decay rate of genetic diversity (posterior)") +
+  theme_bw()+
+  theme(legend.position = "none")
+
+p1/p2 +plot_annotation(tag_levels = "A") + plot_layout(guides="collect")
+```
+
+```{r summary-stats-genetics, eval = FALSE}
+
+newdata <- data_genetics %>%  
+  mutate(landscapeID = landscapeID[1], Generation = 1) %>% 
+  select(landscapeID,is.front,Location,Treatment,Generation) %>% 
+  filter(is.front!=0) %>% 
+  distinct() %>% 
+  add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
+  mutate(.value=exp(.value)) 
+
+## differences in decay between treatments per location
+newdata %>% 
+  group_by(Location) %>% 
+  compare_levels(.value,by=Treatment,fun=`-`) %>%
+  mean_hdi()
+
+## differences in decay between location per treatment
+newdata %>% 
+  group_by(Treatment) %>% 
+  compare_levels(.value,by=Location,fun=`-`) %>%
+  mean_hdi()
+
+## and is the latter difference different among treatments?
+
+newdata %>% 
+  group_by(Treatment) %>% 
+  compare_levels(.value,by=Location,fun=`-`) %>% 
+  ungroup() %>% 
+  compare_levels(.value,by=Treatment,fun=`-`) %>% 
+  mean_hdi()
+```
+

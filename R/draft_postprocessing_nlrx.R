@@ -1,17 +1,3 @@
-library(modelr)
-library(RColorBrewer)
-library(cowplot)
-
-###inference
-library(coda)
-library(rstan)
-library(bayesplot)
-library(brms)
-rstan_options(auto_write = TRUE)
-options(mc.cores = 2)
-library(tidybayes)
-library(patchwork)
-##test2=unnest_simoutput(nl_object) ##some conflicts when extricting patch and turtle variables?
 
 
 
@@ -34,8 +20,7 @@ tab=output_patches %>% filter(N_postdispersal>0) %>%
   mutate(denom_Hexp=(N_postdispersal^2),nume_Hexp=2*N_allele0*N_allele1) %>% 
 #group_by(treatment,replicateID,ticks,is.front) %>%
 #summarise(Hexp=mean(Hexp)) %>% 
-ungroup()%>% 
-  filter(treatment != "strong Allee effect (a = 20)") 
+ungroup()
 
 ggplot(tab) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
 tab %>% group_by(ticks,treatment,is.front,K) %>% summarise(Hexp=mean(Hexp)) %>% 

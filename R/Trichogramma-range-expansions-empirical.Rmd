@@ -2,7 +2,12 @@
 title: 'Trichogramma range expansions: genetic diversity and dynamics'
 author: "Maxime Dahirel"
 date: "09/01/2020"
-output: html_document
+output: 
+  html_document:
+    theme: yeti
+    toc: TRUE
+    toc_float: TRUE
+    code_download: TRUE
 editor_options: 
   chunk_output_type: console
 ---
@@ -33,6 +38,7 @@ library(tidybayes)
 library(modelr)
 library(RColorBrewer)
 library(cowplot)
+library(ggrepel)
 library(patchwork)
 
 library(vegan)
@@ -60,37 +66,30 @@ library(here)
 ## Aims of project 
 To understand how the position of a range expansion on a pushed/pulled gradient influences its spread dynamics and evolution
 
-## General methods
+## General methods (see preprint or article for full details)
 
-24 experimental linear landscapes were created, consisting in patches ("bottles") connected by tubes. Each patch contains 450 host eggs as resource, replenished at each generation.
+24 experimental linear landscapes were created, consisting in patches ("bottles") connected by tubes. Each patch contains ~450 host eggs as resource, replenished at each generation.
 
 *Trichogramma brassicae* individuals were introduced in the initial patch, and the experiment ran for 14 generations, counting the starting individuals. 
 
-At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information (this document), and as sources of further offspring for other tests. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
+At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information (this document), and as sources of further offspring for another experiment. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
 
 We expected that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties:
 
 ```{r proof-of-principle, echo = FALSE}
-#proof of principle that reduced connectivity restricts dispersal at low N, due to binomial properties
-p1 <-expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
+#proof of principle that reduced connectivity restricts dispersal at low N, due to properties of the binomial distribution
+expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
+mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
  ggplot()+
-  geom_line(aes(x=N,y=pbinom(0,N,dispersal.rate),col=factor(dispersal.rate)))+
-  scale_y_continuous(name="Probability that no individual manages to disperse")+
+  geom_line(aes(x=N,y=1-pbinom(0,N,dispersal.rate),col=factor(dispersal.rate)),size=1.2)+
+  scale_y_continuous(name="Probability that at least one individual disperses")+
   scale_x_log10(name="Population size before dispersal phase")+
   scale_color_discrete(name="Mean dispersal rate") +
-  theme_classic()
-
-p2 <- expand.grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
-  ggplot()+
-  geom_line(aes(x=N,y=qbinom(0.5,N,dispersal.rate)/N,col=factor(dispersal.rate)))+
-  scale_y_continuous(name="Median dispersal rate")+
-  scale_x_log10(name="Population size before dispersal phase")+
-  scale_color_discrete(name="Mean dispersal rate") +
-  theme_classic()
-
-(p1|p2)+plot_layout(guides="collect")+plot_annotation(tag_levels="A") & theme_bw()
-### the effect vanishes around N=200 and become strong at N<100 so probably too rare to be detected in previous studies with K in tens of thousands
-### so even with low dispersal founding units rarely below the 100s
+  geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=factor(dispersal.rate)),nudge_x = -2)+
+  theme_bw()+
+  theme(legend.position = "none")
+### the effect vanishes around N=100 and become strong at N<10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
+### when even with low dispersal founding units were probably rarely below the 100s
 ```
 
 As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "control" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
@@ -99,7 +98,6 @@ In the present analysis, we use two sources of information:
 
 - __genetic information__ is obtained by genotyping adult wasps every ~4 generations (release generation, G4,8,12) at 19 microsatellite loci.
 - __population dynamics information__ (population size and spread of the expansion) is obtained by photographing egg plates every generation right when they become brown-black if parasitized. Photographs are then analysed using ImageJ and Codicount to obtain estimated % of parasitism. Each image is analysed by 4 macros trained on different data ; images are scanned by humans prior to analyses, images with no black eggs are directly counted as zeros.
-
 
 # Analysis
 
@@ -144,32 +142,33 @@ data_popsize<- raw_dynamics %>%
 #or digit-digit (patches 10 and beyond)
 ## as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
   mutate(landscapeID=paste("Mix",Mix,"_Dynamics",Dynamics,"_Replicate",Replicate,sep="")) %>% 
-  mutate(prop_para_pix=P/(P+H)) %>% 
-  mutate(spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep="")) %>%  
-  mutate(Neggs_estimated=round(450*prop_para_pix),Nhosts=450, Mix=factor(Mix))  ##quantity of eggs to parasitize available in each patch
+  mutate(Peggs_est=P/(P+H), ## proportion of pixels counted as parasitised (estimated)
+         spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep=""), # a unique ID for each replicate x patch x generation combination
+         Mix = factor(Mix))
 ```
   
   
 ```{r data-validate, eval = FALSE}
 data_validate<-data_popsize %>% 
   group_by(spacetimeID) %>% 
-  filter(sum(is.na(obs_count)==FALSE)>0) %>% ### we group by spacetimeID (replicate, patch, time) and we filter out cases without a human count
-  mutate(Neggs_obs=replace_na(obs_count,0)) ### there are 4 macro counts but only one human count per spacetimeID (put on the same row as one of the macro counts); the other three are NAs, need to contain filler values for the model, which won't be used in the analyses)
+  filter(sum(is.na(obs_count)==FALSE)>0) %>% ### we group by spacetimeID (replicate, patch, time) and we filter out all cases without a human count to validate against
+  mutate(Neggs_obs=replace_na(obs_count,0)) ### there are 4 macro counts but only one human count per spacetimeID (put on the same row as one of the macro counts); the other three are NAs, need to contain filler values (0 here) for the bivariate model to work, which won't be used in the analyses)
 ```
 
 ### Data popsize dataset
 
 ```{r data-popsize, eval=FALSE}
 data_popsize<-data_popsize %>% 
-  select(landscapeID,Mix,Dynamics,Replicate,Generation,Patch,spacetimeID,Macro,Neggs_estimated,Nhosts) %>% 
+  select(landscapeID,Mix,Dynamics,Replicate,Generation,Patch,spacetimeID,Macro,Peggs_est) %>% 
   group_by(landscapeID,Mix,Dynamics,Replicate,Generation) %>%
   mutate(front = max(Patch)) %>% 
-  complete(Patch=1:max(Patch),Macro, front, fill=list(Neggs_estimated=0)) %>% ## the reason we start the complete(Patch at Patch 1 instead of 0 is because there's a missing value to NOT fill with 0 at one of the Patch = 0 for one of the Macro; it's present for all other Macros so it's a true missing value
+  complete(Patch=1:max(Patch),Macro, front, fill=list(Peggs_est=0)) %>% ## to give all extinct patches behind the front with 0 parasitised (so no record in raw dataset) a row in the dataset
+  ## the reason we start the complete(Patch at Patch 1 instead of 0 is because there's a missing value to NOT fill with 0 at one of the Patch = 0 for one of the Macro; it's present for all other Macros so it's a true missing value (Macro not run on this photograph for some reason)
   ungroup() %>% 
   mutate(is.pushed=-0.5+1*(Dynamics=="PS")) %>%  ##dummy centred variable
   mutate(distfront=(front+1)-Patch) ## for the chosen non-linear model to work, we need a coordinate variable such that 0 = first empty patch
 
-##ggplot(data_popsize)+geom_boxplot(aes(x=factor(distfront),y=Neggs_estimated,col=Dynamics))+facet_wrap(~Dynamics)
+##ggplot(data_popsize)+geom_boxplot(aes(x=factor(distfront),y=Peggs_est,col=Dynamics))+facet_wrap(~Dynamics)
 ```
 
 
@@ -177,19 +176,20 @@ data_popsize<-data_popsize %>%
 
 ```{r data-G0, eval = FALSE}
 ###a subdataset only containing info on G0
-data_G0 <- filter(data_popsize,Generation==1) %>% 
-  select(landscapeID,Mix,Dynamics,is.pushed,Patch,Neggs_estimated,Macro) %>% 
-  mutate(status = factor(Patch == 0)) %>% 
-  mutate(status = fct_recode(status,res_offspring="TRUE",disp_offspring="FALSE")) %>% 
-  group_by(landscapeID,Mix,Dynamics,is.pushed,Macro,status) %>% 
-  summarize(Neggs_estimated = sum(Neggs_estimated)) %>% 
+data_G0 <- filter(data_popsize,Generation==1 & Patch<=4) %>% 
+  select(landscapeID,Mix,Dynamics,is.pushed,Patch,Peggs_est,Macro) %>% 
   ungroup() %>% 
-  pivot_wider(.,names_from="status",values_from=c("Neggs_estimated")) %>% 
-  mutate(all_offspring = disp_offspring + res_offspring)
+  pivot_wider(.,names_from="Patch",values_from=c("Peggs_est"),names_prefix = "P") %>% 
+  filter(is.na(P0)==FALSE) %>%   ##the one macro with missing info for residents
+  mutate(P1=replace_na(P1,0)) %>% 
+  mutate(P2=replace_na(P2,0)) %>% 
+  mutate(P3=replace_na(P3,0)) %>% 
+  mutate(P4=replace_na(P4,0))  %>% 
+  mutate(Pall=(P0+P1+P2+P3+P4))
 
 ##There is one patch-macro combination with NAs for residents (and total), so unusable. This is normal behaviour (see chunk data-pop)
 
-#ggplot(data_G0)+geom_point(aes(x=all_offspring,y=disp_offspring/all_offspring))+facet_wrap(~Dynamics)
+#ggplot(data_G0)+geom_point(aes(x=Pall,y=1-P0/Pall))+facet_wrap(~Dynamics)
 ```
 
 ### Data front data set
@@ -261,21 +261,26 @@ data_genetics <- data_genetics %>%
 
 ```{r model-validate, eval = FALSE}
 prior_validate=c(
-  set_prior("normal(0,1.5)",class="Intercept",resp=c("Neggsobs","Neggsestimated")),
-  set_prior("normal(0,1)",class="sd",resp=c("Neggsobs","Neggsestimated")),
-  set_prior("lkj(2)",class="cor")
-  )
+    set_prior("normal(0,1.5)",class="Intercept",resp="Neggsobs"),
+    set_prior("normal(0,1)",class="sd",resp="Neggsobs"),
+    
+    set_prior("normal(0,1.5)",class="Intercept",resp="Peggsest"),
+    set_prior("normal(0,1)",class="sd",resp="Peggsest"),  ##half-normal is implied for sd pars in brms
+    set_prior("normal(0,1)",nlpar="invphi",resp="Peggsest",lb=0),  ##but has to be made explicit for many other types of pars
+    set_prior("lkj(2)",class="cor")
+)
 
 bf_validate_obs=bf(Neggs_obs|trials(450)+subset(Neggs_obs>0)~(1|1|spacetimeID),family=binomial)
-bf_validate_estimated=bf(Neggs_estimated|trials(450)+subset(Macro !="MacroG13")~(1|1|spacetimeID)+
-                           (1|spacetimeID:Macro),
-                         family=binomial)
+bf_validate_estimated=bf(Peggs_est~(1|1|spacetimeID),
+                         nlf(phi~1/invphi),
+                         invphi~1,
+                         family=Beta(link_phi="identity"))
 
 mod_validate=brm(
-  mvbf(bf_validate_obs+bf_validate_estimated),
-  data=data_validate,
-  chains=Nchains,iter=Niter,warmup=Nwarmup,prior=prior_validate,seed=42
-  )
+    mvbf(bf_validate_obs+bf_validate_estimated),
+    data=data_validate,
+    chains=Nchains,iter=Niter,warmup=Nwarmup,prior=prior_validate,seed=42
+)
 ```
 
 ### Data at G0 
@@ -289,27 +294,21 @@ Because both are estimated with a non-negligeable amount of error (see "validate
 ```{r model-g0, eval=FALSE}
 ###the model for spread of first-gen offspring
 
-bf_G0_disp = bf(disp_offspring|trials(all_offspring)~0+Dynamics+
-             (1|1|gr(landscapeID,by=Dynamics)),
-           family=binomial)
-
-bf_G0_fec = bf(all_offspring~0+Dynamics+
-             (1|1|gr(landscapeID,by=Dynamics))+(1|landscapeID:Macro),
-           family=poisson)
-
-prior_G0=c(
-  set_prior("normal(0,1.5)",class="b",resp=c("dispoffspring")),
-  set_prior("normal(log(450),1)",class="b",resp=c("alloffspring")),
-  set_prior("normal(0,1)",class="sd",resp=c("dispoffspring","alloffspring")),
-            set_prior("lkj(2)",class="cor")
-)
-
-
-mod_G0=brm(
-  mvbf(bf_G0_fec,bf_G0_disp),
-         data=subset(data_G0,Macro!="MacroG13"),
-         chains=Nchains,iter=Niter,warmup=Nwarmup,prior=prior_G0,seed=42,control=list(adapt_delta=0.9)
-  )
+mod_G0 <- brm(bf(1-P0/Pall~is.pushed*scale(Pall)+(is.pushed*scale(Pall)|Macro), 
+        nlf(phi~1/invphi),
+        invphi~1),
+        data=data_G0,family=Beta(link_phi="identity"),
+        iter=2000,chains=4,
+        prior=c(
+          set_prior("normal(0,1.5)",class="Intercept"),
+          set_prior("normal(0,1)",class="b"),
+          set_prior("normal(0,1)",class="sd"),
+          set_prior("normal(0,1)",nlpar="invphi",lb=0), ###look up what good prior for log(phi) (or phi)
+          set_prior("lkj(2)",class="cor")
+        ),
+        control=list(adapt_delta=0.99),seed=42)
+### we put a prior on 1/phi as recommended in stan prior reco (for negbin, but should be applicable to beta)
+###
 ##the one line with a NA is a point not analysed for one of the macros (missing data). Do not fill with a 0!!
 
 ```
@@ -323,11 +322,21 @@ prior_popsize=c(
   set_prior("normal(0,1.5)",nlpar = "logitAsym", class="b"),
   ##use N(0.5,1) to show skewed expectations toward >50% based on previous  tricho papers?
   
+  set_prior("normal(0,1.5)",nlpar = "logitPfront", class="b"),
+  
   ###priors for log (rate of spatial decay)
   set_prior("normal(0,1)",nlpar="lograte",class="b"),
   
+  set_prior("normal(0,1)",nlpar="invphi",lb=0),
+  
   ###random/varying effects priors
-  set_prior("normal(0,1)",nlpar=c("logitAsym","lograte","ORLE"),class="sd"),
+  set_prior("normal(0,1)",nlpar="logitAsym",class="sd"),
+  
+  set_prior("normal(0,1)",nlpar="logitPfront",class="sd"),
+  
+  set_prior("normal(0,1)",nlpar="lograte",class="sd"),
+  
+  set_prior("normal(0,1)",nlpar="invphi",class="sd"),
   
   set_prior("lkj(2)",class="cor")
 )
@@ -337,22 +346,28 @@ prior_popsize=c(
 ### shift to monomol over logistic to facilitate fit
 ### moving the location parameter to actual observed front makes both shape (this) and location
 ### easier to fit
-bf_popsize=bf(Neggs_estimated|trials(Nhosts)~logit(Asym*(1-exp(-distfront*rate)))+ORLE,   #Asym-Asym*exp(-distfront*rate)
+bf_popsize=bf(Peggs_est|subset(Peggs_est>0)~logit(Pfront+(Asym-Pfront)*(1-exp(-(distfront-1)*rate))),   #Asym-Asym*exp(-distfront*rate)
+              ###beta doesn't accept zeroes, but only 9/ >10000 and this is a supplementary
+              ### so we remove them and note this may lead to very very slight overestimates
+              ### rather than trying a zero_inflated beta
                nlf(Asym~inv_logit(logitAsym)),
+               nlf(Pfront~inv_logit(logitPfront)),
                nlf(rate~exp(lograte)), 
-               logitAsym~0+Dynamics+(1|1|landscapeID)+(1|2|landscapeID:Generation),
-               lograte~0+Dynamics+(1|1|landscapeID)+(1|2|landscapeID:Generation),
-               ORLE~0+(1|spacetimeID)+(1|spacetimeID:Macro),
-               family=binomial,nl=TRUE) 
+               logitAsym~0+Dynamics+(1|1|landscapeID)+(1|2|Macro),
+               logitPfront~0+Dynamics+(1|1|landscapeID)+(1|2|Macro),
+               lograte~0+Dynamics+(1|1|landscapeID)+(1|2|Macro),
+               nlf(phi~1/invphi),
+               invphi~1+(1|1|landscapeID)+(1|2|Macro),
+               family=Beta(link_phi="identity"),nl=TRUE) 
 
 ###like with logistic 1/rate = characteristic time
 ### but because monomol is kinda a "half logistic" with midpoint at 0,0
 ### front width from 0,0 to 95% asym is 3/rate
 
-mod_popsize=brm(bf_popsize, data=subset(data_popsize,distfront>0 & Macro!="G13"),
+mod_popsize=brm(bf_popsize, data=subset(data_popsize,distfront>0),
                 prior=prior_popsize,
                 seed=42,
-                chains=Nchains,iter=Niter,warmup=Nwarmup,
+                chains=2,iter=100,warmup=50,
                 control=list(adapt_delta=0.9, max_treedepth=15),inits="0")
 
 
@@ -467,17 +482,18 @@ mod_genetics=brm(bf_genetics,
 
 #illustrating the correlation (supplementary material)
 
-newdata <- filter(data_validate,Macro=="MacroG3") %>% 
+newdata <- filter(data_validate,Macro=="MacroG3") %>% ##selecting a Macro at random, it's just for generating predictions and plots
   ungroup() %>% 
-  mutate(Neggs_obs=2,Neggs_estimated=2,Nhosts=450) %>% 
-  select(Nhosts,Neggs_estimated,Neggs_obs,spacetimeID,Macro) %>% 
+  mutate(Neggs_obs=2,prop_para_pix=0.2,Nhosts=450) %>% 
+  select(Nhosts,Peggs_est,Neggs_obs,spacetimeID,Macro) %>% 
   distinct()
 
 
 preds <- left_join(
-  newdata %>% add_fitted_draws(mod_validate,resp="Neggsestimated",value="estimated",re_formula=~(1|spacetimeID)),
+  newdata %>% add_fitted_draws(mod_validate,resp="Peggsest",value="estimated",re_formula=~(1|spacetimeID)),
   newdata %>% add_fitted_draws(mod_validate,resp="Neggsobs",value="human",re_formula=~(1|spacetimeID))
-)
+) %>% 
+  mutate(human=human/450)
 
 preds %>% ungroup() %>% select(spacetimeID,estimated,human,.draw) %>% 
   pivot_longer(cols=c(estimated,human),values_to = ".value") %>% 
