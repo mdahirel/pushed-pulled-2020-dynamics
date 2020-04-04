@@ -56,7 +56,6 @@ Nwarmup=1000
 Nchains=4
 
 library(here)
-### use janitor package to standardise case (also be consistent in newly generated variables)
 ```
 
 # TO DO
@@ -68,6 +67,7 @@ Nearly everything is done and clean, but still a few things to perfect:
 - maybe more markdown comments?
 - clean and tidy code, re-arrange order of lines in ggplot code
 - check all loaded packages are still actually useful
+- tidying up model control params (iter, chains, delta...)
 
 ## would be nice to do but probably won't for this paper 
 - move model_-_front to distribution actually accounting for the discrete nature of front locations values (integer only)? Doing it with Poisson is trading an approximation for another, because Poisson is overdispersed for these data (you can change mod_front to Poisson and check this with pp_check()). A Conway Maxwell Poisson may solve this, but not 100% implemented yet in brms, and maybe overkill https://discourse.mc-stan.org/t/brms-and-conway-maxwell-poisson-distribution/7368/15
@@ -398,12 +398,13 @@ prior_genetics=c(
   set_prior("normal(0,1)",nlpar=c("logdecay","logitH0"),class="sd"),
   set_prior("lkj(2)",class="cor")
 )
-bf_genetics=bf(Hexp~log(H0*exp(-decay*Generation)),
+
+bf_genetics=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~exp(logdecay)/10),
                logitH0~1+(1|1|landscapeID),
                logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
-               family=student("log"),nl=TRUE)
+               family=student(),nl=TRUE)
 
 mod_genetics=brm(bf_genetics,
                  data=data_genetics,
@@ -432,17 +433,18 @@ summary_genetics <- mod_genetics %>%
 mcmc_rank_overlay(mod_genetics, pars = summary_genetics$name)
 
 ###prediction intervals around each point
-ppc_ribbon(yrep=predict(mod_genetics,summary=FALSE),
+ppc_ribbon(yrep=invlogit(predict(mod_genetics,summary=FALSE)),
            x=rank(predict(mod_genetics)[,1]),
            y=data_genetics$Hexp,
            prob = 0.5, prob_outer=0.95)
 ```
 
-But heterozygosity is always between 0 and 1. So why use a log-Student model, and not simply a Beta model?  
-Well, we did both, and the former clearly outperforms the latter, maybe because it accounts better for rare outliers (which would be expected due to sampling when selecting individuals before genotyping, or due to the expansion process itself):
+#### Aside:  why use a logit-Student model, and not simply a Beta model (or a logit-normal)?  
+
+Well, we did both, and the former outperforms the others, maybe because it accounts better for rare outliers (like sudden **increases** in diversity with time) that are visible on plots (which would be expected due to sampling when selecting individuals before genotyping, or due to the expansion process itself):
 
 ```{r model-genetics-beta, eval = FALSE}
-bf_genetics2=bf(Hexp~log(H0*exp(-decay*Generation)),
+bf_genetics2=bf(Hexp~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~exp(logdecay)/10),
                logitH0~1+(1|1|landscapeID),
@@ -459,16 +461,62 @@ mod_genetics2=brm(bf_genetics2,
                  seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
 )
 
-loo_student <- loo(mod_genetics)
-loo_beta <- loo(mod_genetics2,reloo=TRUE)
-loo_compare(loo_student, loo_beta) 
-##despite Beta a priori a better spec, log-Student has better predictive performance 
-##see https://mc-stan.org/bayesplot/reference/PPC-loo.html for further possibilities of investigation
+##can't compare both models directly with LOO since the responses are not the same, logit(Hexp) versus Hexp
+## but let's check their performance:
+
+pp_check(mod_genetics,type="loo_pit_overlay",nsamples=2000)
+
+pp_check(mod_genetics2,type="loo_pit_overlay",nsamples=2000)
+
+##some evidence that the Beta model is slightly more miscalibrated compare to the Student on logits
+## can also be seen using loo_pit_qq
 #####
 
 ```
 
-still, by forcing H0 to be between 0 and 1 using a logit transformation, we still ensure no "weird" values (e.g. > 1) are predicted by the log-Student model anyway
+While we can't directly compare the Student on logits and the Beta models with LOO, we can compare the student with a Gaussian model on logits, which should be close to a Beta in terms of behaviour:
+
+
+```{r model-genetics-logit-normal, eval = FALSE}
+bf_genetics3=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
+               nlf(H0~inv_logit(logitH0)),
+               nlf(decay~exp(logdecay)/10),
+               logitH0~1+(1|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               family=gaussian,nl=TRUE)
+
+mod_genetics3=brm(bf_genetics3,
+                 data=data_genetics,
+                 chains=Nchains,iter=Niter*2,warmup=Nwarmup*2,
+                 prior=c(prior_genetics,
+                         set_prior("normal(0,1)",class="sigma")),
+                 seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
+)
+
+##looking at 
+## summary(mod_genetics)
+## summary(mod_genetics2)
+## summary(mod_genetics3)
+## confirms that the logit-normal behaves more or less like the Beta
+
+pp_check(mod_genetics,type="loo_pit_overlay",nsamples=2000)
+
+pp_check(mod_genetics2,type="loo_pit_overlay",nsamples=2000)
+
+pp_check(mod_genetics3,type="loo_pit_overlay",nsamples=2000)
+
+## the LOO PIT graphs too
+##, so now let's compare logit student and logit normal:
+
+loo1<-loo(mod_genetics)
+
+loo3<-loo(mod_genetics3, reloo=TRUE)  ##reloo = TRUE needed because some "problematic" obs with high pareto_k
+
+loo_compare(loo1,loo3)
+
+##evidence that logit-student is better
+#####
+```
 
 ## Postprocessing : plots and summaries
 
@@ -602,6 +650,7 @@ p1 <- data_genetics %>%
   filter(is.front!=0) %>% 
   expand_grid(Generation=c(0:120)/10) %>%  
   add_fitted_draws(mod_genetics,re_formula=NA) %>% 
+  mutate(.value=invlogit(.value)) %>% 
   ggplot()+
   stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
   geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+

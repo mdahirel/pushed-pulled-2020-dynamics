@@ -11,3 +11,80 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
+
+
+
+```{r}
+
+
+#### for analysing size of new propagules:
+#### works only if all ticks are recorded, not one out of two
+
+tab_propa <- output_patches %>% filter(N_postdispersal>0) %>% 
+  group_by(treatment,replicateID,ticks,K) %>% 
+  mutate(front=max(pxcor),seedID=`random-seed`) %>%
+  filter(pxcor >= (front-1) ) %>% 
+  mutate(is.front=pxcor==front) %>% 
+  group_by(treatment,replicateID,is.front,K) %>% 
+  arrange(ticks) %>% 
+  mutate(front_prev=lag(front))%>%
+  mutate(front_prev=replace_na(front_prev,0)) %>% 
+  filter(front>front_prev & ticks >1) %>%  ##we only keep case where the front advanced (new pops) 
+  ###remove G1 because dispersal in only one direction so messier for comparison to deterministic
+  select(replicateID,front,is.front,front_prev,ticks,N_predispersal,N_postdispersal) %>% 
+  pivot_wider(names_from=is.front,values_from=c(N_predispersal,N_postdispersal)) %>% 
+  left_join(trt_grid) %>% 
+  filter(treatment == "control" | treatment == "reduced connectedness") %>% 
+  mutate(N_founding_actual=N_postdispersal_TRUE,N_founding_deterministic=N_predispersal_FALSE*disp0_mean/2) %>% 
+  ungroup() %>% 
+  select(N_founding_actual,N_founding_deterministic,treatment,replicateID,ticks,K) %>% 
+  mutate(ratio=N_founding_actual/N_founding_deterministic) %>% 
+  mutate(K=factor(K))
+
+mod_propa1=brm(N_founding_actual~0+treatment:K+(1|replicateID),
+               family=negbinomial,data=tab_propa,
+               prior=c(set_prior("normal(0,1)",class="b"),
+                       set_prior("normal(0,1)",class="sd")),chains=4,iter=100)
+
+
+mod_propa2=brm(ratio~0+treatment:K+(1|replicateID),
+               family=lognormal,data=tab_propa,
+               prior=c(set_prior("normal(0,1)",class="b"),
+                       set_prior("normal(0,1)",class="sd"),
+                       set_prior("normal(0,1)",class="sigma")),chains=2,iter=100)
+
+
+
+tab_propa %>% 
+  mutate(replicateID=replicateID[1]) %>% 
+  select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa2,re_form=NA) %>% 
+  ggplot()+
+  geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
+  geom_violin(aes(x=treatment,y=.value))+
+  facet_wrap(~K)
+###double check weird behavior of add_fitted_draws here (AND ELSEWHERE)
+
+tab_propa %>% 
+  mutate(replicateID=replicateID[1]) %>% 
+  select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa2,re_formula=NA,scale="linear") %>% 
+  ggplot()+
+  #geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
+  geom_eye(aes(x=treatment,y=exp(.value)))+ 
+  scale_y_continuous("new population size[observed] / new population size [deterministic] (posterior mean)")+
+  scale_x_discrete("landscape type")+
+  facet_wrap(~paste ("K = ",K))+theme_bw()
+
+
+
+tab_propa %>% 
+  mutate(replicateID=replicateID[1]) %>% 
+  select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA,scale="linear") %>% 
+  ggplot()+
+  #geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
+  geom_eye(aes(x=treatment,y=exp(.value)))+ 
+  scale_y_continuous("new population size[observed] (posterior)")+
+  scale_x_discrete("landscape type")+
+  facet_wrap(~paste ("K = ",K))+theme_bw()
+
+```
+

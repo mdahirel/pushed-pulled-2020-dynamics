@@ -11,3 +11,227 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
+
+
+```{r}
+library(arm)
+library(tidyverse)
+library(here)
+
+library(modelr)
+library(RColorBrewer)
+
+###inference
+library(coda)
+library(rstan)
+library(bayesplot)
+library(brms)
+rstan_options(auto_write = TRUE)
+options(mc.cores = 2)
+library(tidybayes)
+library(patchwork)
+```
+
+# TO DO 
+
+- check priors for parameters that have been multiplied by *X* to make them fit within "general priors" (and all the others)
+- find a valid colour code (reminder: need 6 different colours, a subgroup of 4 for treatment plots and a subgroup of 2 for front/core plots, ideally qualitative scales, colourblind- and BW-friendly at least within each subgroup)
+- markdown comments?
+- clean and tidy code, re-arrange order of lines in ggplot code
+- check all loaded packages are still actually useful
+-remove the restricted +DDD from the main text model
+- do the genetics model as a logit student here too??
+- tidying up model control params (iter, chains, delta...)
+
+```{r importing-data}
+data <- read_csv(file=here("NetLogo_output/model-output.csv"))
+```
+
+# data wrangling
+
+## genetics
+
+```{r}
+#ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
+###lots of zero, can't use
+
+####method variance in fraction (gandhi 2019 pnas). works by "averaging across" replicates, no zeros in dataset
+#### simplifies problems caused in Hexp when there are zeros (beta, logit transformations can't do anything)
+
+data_genetics <- data %>% 
+  group_by(ticks,treatment,is.front,K) %>% 
+  summarise(varP1=var(P1),varP0=var(P0)) %>% 
+  mutate(K=factor(K))
+
+#ggplot(data_genetics)+
+#  geom_line(aes(x=ticks,y=varP1,col=treatment))+
+#  facet_wrap(~is.front+K)
+```
+
+## front location
+
+```{r}
+data_front <- data %>% 
+  filter(is.front == TRUE) %>% 
+  mutate(front=pxcor) %>% 
+  mutate(K=factor(K))
+
+#ggplot(data_front)+
+#  geom_line(aes(x=ticks,y=front,group=replicateID))+
+#  facet_wrap(~treatment+K)+
+#  geom_abline(aes(intercept=0,slope=(3/(2*sqrt(2)))*velocity_fisher),col="red")+
+#  geom_abline(aes(intercept=0,slope=velocity_fisher),col="blue")
+```
+
+# models
+
+## genetics
+
+```{r}
+prior_genetics=c(
+  set_prior("normal(0,1.5)",nlpar=c("logitHasym")),
+  set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
+  set_prior("normal(0,1)",nlpar="invphi",lb=0)
+)
+
+bf_genetics <- bf(varP1~logit(Hasym*(1-exp(-(ticks)*decay))),
+                  nlf(Hasym~inv_logit(logitHasym)),
+                  nlf(decay~10^(logdecay)),
+                  logitHasym~1,
+                  logdecay~0+treatment:is.front:K,
+                  nlf(phi~1/invphi),
+                  invphi~1,
+                  family=Beta(link_phi="identity"),nl=TRUE)
+
+mod_genetics=brm(bf_genetics,
+                 data=data_genetics,
+                 iter=2000,chains=4,
+                 prior=prior_genetics
+)
+```
+
+
+```{r}
+prior_front <- c(
+  #set_prior("normal(0,1)",nlpar=c("logspeedstart"),class="b"),
+  set_prior("normal(0,1)",nlpar=c("logspeedasym"),class="b"),
+  set_prior("normal(0,1)",nlpar=c("lograte"),class="b"),
+  set_prior("normal(0,1)",nlpar=c("logspeedasym","lograte"),class="sd"),
+  set_prior("normal(0,1)",class="sigma"),
+  set_prior("lkj(2)",class="cor")
+)
+
+
+
+bf_front <- bf(front~log(speed*ticks),
+               nlf(speed~speedasym+(1-speedasym)*exp(-(ticks-1)/rate)), ##speedstart forced to 1
+               nlf(rate~10*exp(lograte)),
+               nlf(speedasym~inv_logit(logspeedasym)),
+               #nlf(speedstart~exp(logspeedstart)),
+               logspeedasym~0+treatment:factor(K)+(1|1|replicateID),
+               #logspeedstart~0+treatment+(1|1|replicateID),
+               lograte~0+treatment:factor(K)+(1|1|replicateID),
+               family=lognormal,nl=TRUE)
+
+mod_front=brm(bf_front,
+              data=subset(data_front,ticks>0),chains=4,iter=2000,
+              prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10))
+```
+
+
+# plots
+
+```{r color-palettes, eval=FALSE}
+
+TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so it can also be used for simulation results
+frontcorePalette <- c("#000000", "#E69F00", "#56B4E9") # 3 colors, for origin (black), front and core patches
+
+```
+
+
+## genetics
+
+```{r}
+## not shown in main text: 
+data_genetics %>% ungroup() %>% 
+  select(treatment,is.front,K) %>% 
+  distinct() %>% 
+  expand_grid(ticks=(1:100)) %>% 
+  add_fitted_draws(mod_genetics,re_formula = NA) %>% 
+  group_by(ticks, treatment) %>% 
+  ggplot()+
+  geom_line(data=data_genetics,aes(x=ticks, y=varP1,col=treatment))+
+  stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.25)+
+  scale_y_continuous("Variance in fraction")+
+  facet_grid(cols=vars(treatment),rows=vars(is.front,K))+
+  theme_bw()
+
+
+
+data_genetics %>% ungroup() %>% 
+  select(treatment,is.front,K) %>% 
+  distinct() %>% 
+  mutate(ticks=1) %>% 
+  add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
+  mutate(.value=10^(.value)) %>% 
+  ggplot()+
+  stat_eye(aes(x=is.front,fill=K,group=K,y=.value),position="dodge",normalize="xy")+
+  facet_grid(cols=vars(treatment))+
+  scale_y_log10(name=expression(paste("genetic diversity decay rate  ",lambda)))+
+  scale_x_discrete("Location",labels=c("core","front"))+
+  theme_bw()
+```
+
+## front
+
+```{r}
+
+trt_grid <- data_front %>% 
+  select(K,treatment,velocity_fisher) %>% 
+  distinct()
+
+#not shown 
+data_front%>% 
+  ungroup() %>% 
+  mutate(replicateID= unique(replicateID)[1]) %>% 
+  select(treatment,replicateID,K) %>% 
+  distinct() %>% 
+  expand_grid(ticks=(1:100)) %>% 
+  add_fitted_draws(mod_front,re_formula=NA) %>% 
+  group_by(ticks, treatment) %>% 
+  ggplot()+
+  geom_line(data=data_front,aes(x=ticks, y=front,group=replicateID),col="grey",alpha=0.2)+
+  stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.5)+
+  scale_y_continuous("Front location (patches from release)")+
+  scale_x_continuous("time (generations)")+
+  facet_grid(cols=vars(treatment),rows=vars(paste("K = ",K,sep="")),space= "free_x",scale="free_x")+
+  geom_abline(data=trt_grid,aes(intercept=0,slope=(3/(2*sqrt(2)))*velocity_fisher),col="red",lty=2)+
+  geom_abline(data=trt_grid,aes(intercept=0,slope=velocity_fisher),col="blue",lty=2)
+
+data_front %>% 
+  ungroup() %>% 
+  mutate(replicateID= replicateID[1],ticks=1) %>% 
+  select(treatment,ticks,replicateID,K) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logspeedasym",re_formula=NA) %>% 
+  mutate(.value=invlogit(.value)) %>% 
+  ggplot()+
+  geom_hline(data=trt_grid,aes(yintercept = (3/(sqrt(2)*2))*velocity_fisher),lty=2)+
+  geom_hline(data=trt_grid,aes(yintercept = velocity_fisher),lty=2)+
+  geom_violin(aes(x=factor(K),group=K,y=.value),alpha=0.25)+
+  scale_y_continuous("Asymptotic velocity (posterior)") +
+  scale_x_discrete("equilibrium population size K")+
+  facet_grid(cols=vars(treatment),space= "free_x",scale="free_x")
+
+data_front %>% 
+  ungroup() %>% 
+  mutate(replicateID= replicateID[1],ticks=1) %>% 
+  select(treatment,ticks,replicateID,K) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logspeedasym",re_formula=NA) %>%
+  mutate(.value=invlogit(.value))%>% 
+  left_join(trt_grid) %>%
+  mutate(.value=.value/velocity_fisher) %>% 
+  mean_hdi()
+```
+

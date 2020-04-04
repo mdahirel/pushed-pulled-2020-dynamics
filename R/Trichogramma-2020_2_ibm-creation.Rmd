@@ -1,5 +1,5 @@
 ---
-title: 'Trichogramma range expansions (genetics and dynamics): 2- individual-based model, model generation'
+title: 'Trichogramma range expansions (genetics and dynamics): 2- individual-based model, model creation'
 author: "Maxime Dahirel"
 date: "31/03/2020"
 output: 
@@ -11,3 +11,187 @@ output:
 editor_options: 
   chunk_output_type: console
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r load-packages, warning = FALSE, message = FALSE}
+library(nlrx)
+library(arm)
+library(tidyverse)
+library(ggrepel) ## for the proof-of-principle graph
+library(here)
+```
+
+# TO DO
+parallelize the `running-simulations` chunk?
+
+# Introduction
+
+(see manuscript/preprint text for more context)
+
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way:
+
+```{r proof-of-principle, echo = FALSE}
+#proof of principle that reduced connectivity restricts dispersal at low N, due to properties of the binomial distribution
+expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
+mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
+ ggplot()+
+  geom_line(aes(x=N,y=1-pbinom(0,N,dispersal.rate),col=dispersal.rate,group=dispersal.rate),size=1.2)+
+  scale_y_continuous(name="Probability that at least one individual disperses")+
+  scale_x_log10(name="Population size before dispersal phase")+
+  scale_color_gradient(name="Mean dispersal rate",low="black",high="grey60") +
+  geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=dispersal.rate),nudge_x = -2)+
+  theme_bw()+
+  theme(legend.position = "none")
+### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
+### when even with low dispersal founding units were probably rarely below the 100s
+```
+
+The aim of the model is to test this prediction using information on front velocity and genetic diversity in the front and core patches of expanding metapopulations. To validate the simulation, we also set up treatments with Allee effects and (classical) density-dependent dispersal. We focus on relatively "low" population sizes, as they are where our effect of interest is present, and have been understudied in theory. We look at two populations sizes because of previous research showing equilibrium population size *K* influences the dynamics of pushed waves, and to have a qualitative point of comparison in case experimental data also involve shifts in *K*.
+
+# Setup
+
+First, let's tell R where is your NetLogo version, what version number it is, for how many generations do we want the model to run, and how many replicates we want for each parameter combination:
+
+```{r general-information}
+####
+NLPATH <- "C:/Program Files/NetLogo 6.1.1"
+NLVERSION <- "6.1.1"
+nreplicates <- 100
+duration <- 100
+```
+
+We now need to tell R where the actual NetLogo file of the model is (The reader is strongly encouraged to go look at it, especially the Info pane):
+
+```{r model-path}
+nl_object <- nl(nlversion = NLVERSION, nlpath = NLPATH,
+               modelpath = here("NetLogo_model/range_expansion.nlogo"), 
+               jvmmem = 1024)
+```
+
+
+Then, let's set the experimental design. There is four main treatments, plus a combination ( density-dependent dispersal + reduced connectedness) that is used in Supplementary Materials. More detailed information on parameter ad parameter choices can be found in the manuscript and in the Info pane of the NetLogo file
+
+```{r design-grid}
+###designing the experiment
+trt_grid=tibble(treatment=c("control","weak Allee effect (a = 0.95)",
+                            "density-dependent dispersal",
+                            "reduced connectedness",
+                            "reduced + DDD"),
+                start_allee_thres=c(0,0.95,0,0,0), ## weak Allee effect
+                slope_disp_mean=c(0,0,1,0,1), ##leads to roughly doubling of disp between 0 and K, realistic
+                disp0_mean=c(0.2,0.2,0.2,0.1,0.1) ## realistic range
+) %>% 
+  mutate(fecundity = 5) %>%  ## close to Trichogramma conditions given their sex ratio of about 50% and assuming 24 or 48 h of egg laying, as in experiments, see manuscript
+  expand_grid(K=c(225,450)) %>% 
+  mutate(velocity_fisher=2*sqrt(
+    log(fecundity)*(1 - 1 / K) * (1 - start_allee_thres / 1)*  ## fecundity term at N = 1 
+                                  0.5*invlogit(logit(disp0_mean)+(1/K)*slope_disp_mean)) ## dispersal term at N = 1
+    )
+```
+
+
+Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object:
+
+```{r set-experiment}
+
+nl_object@experiment <- experiment(
+  expname="experiment-art1-2020",
+  outpath=here("NetLogo_output"),
+  repetition = 1,
+  tickmetrics = "true",
+  idsetup = "setup",
+  idgo="go",
+  stopcond="not any? turtles",
+  runtime=duration,
+  evalticks= 1:duration,
+  metrics=c("ticks"),
+  metrics.patches = c("pxcor","N_predispersal","N_postdispersal","N_allele0","N_allele1"),
+  constants=list(
+    "trait_variation"= "\"reshuffled\"",   ### note how string variable/csts must be entered
+    #"K"=450,
+    #"start_allee_thres"=5,
+    "duration"=duration,
+    "logit_disp0_sd"=0,
+    #"disp0_mean"=0.2, 
+    "slope_disp_sd"=0
+    #"slope_disp_mean"=0,
+    #"fecundity"=5,
+    ),
+  
+  variables=list( ###needs to be a nested list
+    "start_allee_thres"=list(values=trt_grid$start_allee_thres),
+    "slope_disp_mean"=list(values=trt_grid$slope_disp_mean),
+    "disp0_mean"=list(values=trt_grid$disp0_mean),
+    "fecundity"=list(values=trt_grid$fecundity),
+    "K"=list(values=trt_grid$K)
+  )
+  
+)
+```
+
+
+And we're go for running the simulations! We set a "distinct" simulation design (see `nlrx` help).
+(Careful, script is not parallelized, so running 500 replicates in total is expected to take a few hours)
+
+```{r running-simulations}
+
+set.seed(42) ##we set seed here to guarantee the seeds selected below are the same everytime
+nl_object@simdesign<-simdesign_distinct(nl=nl_object,nseeds=nreplicates)
+
+exp1_2020 <- run_nl_all(nl_object)
+
+#setsim(nl_object, "simoutput") <- exp1_2020 #not needed
+#write_simoutput(nl_object)   #not needed
+```
+
+```{r processing-output-presaving}
+
+tab <- exp1_2020 %>% 
+  dplyr::select(ticks,start_allee_thres,slope_disp_mean,disp0_mean,fecundity,K,seedID = `random-seed`,metrics.patches) %>% 
+  mutate(metrics.patches2 = map(metrics.patches,
+      .f = ~.x %>% 
+        filter(N_postdispersal>0) %>%  ## we only keep populated patches...
+        filter(pxcor==max(pxcor)|pxcor==0) %>%  ## we only keep the front one and the starting one
+        mutate(is.front= (pxcor==max(pxcor))) %>% 
+        mutate(Hexp=2*(N_allele0/N_postdispersal)*(N_allele1/N_postdispersal), #expected heterozygosity
+               P0=(N_allele0/N_postdispersal),
+               P1=(N_allele1/N_postdispersal)) 
+      ) 
+  )%>% 
+  left_join(trt_grid)%>% 
+  select(-metrics.patches) %>% 
+  unnest(cols=c(metrics.patches2)) %>% 
+  mutate(replicateID=paste(K,treatment,seedID)) %>% 
+  mutate(Location_full=paste(replicateID,pxcor,ticks))
+```
+
+
+```{r saving-output}
+write_csv(tab, path=here("NetLogo_output/model-output.csv"))
+```
+
+We can now use the `ibm-analysis` scripts to analyse the model outputs.
+
+
+```{r processing-supplementary}
+
+tab_suppl <- exp1_2020 %>% 
+  dplyr::select(ticks,start_allee_thres,slope_disp_mean,disp0_mean,fecundity,K,seedID = `random-seed`,metrics.patches) %>% 
+  mutate(metrics.patches2 = map(metrics.patches,
+      .f = ~.x %>% 
+        filter(N_postdispersal>0) %>%  ## we only keep populated patches...
+        filter(pxcor>= (max(pxcor)-1)) %>%  ## we only keep the front one and the one behind (potential sources of front)
+        mutate(is.front= (pxcor==max(pxcor)))
+      ) 
+  )%>% 
+  left_join(trt_grid)%>% 
+  select(-metrics.patches) %>% 
+  unnest(cols=c(metrics.patches2)) %>% 
+  mutate(replicateID=paste(K,treatment,seedID)) %>% 
+  mutate(Location_full=paste(replicateID,pxcor,ticks))
+
+write_csv(tab_suppl, path=here("NetLogo_output/model-output_supplementary.csv"))
+```
