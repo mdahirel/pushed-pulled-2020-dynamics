@@ -29,6 +29,7 @@ library(brms)
 rstan_options(auto_write = TRUE)
 options(mc.cores = 2)
 library(tidybayes)
+library(cowplot)
 library(patchwork)
 ```
 
@@ -42,6 +43,7 @@ library(patchwork)
 -remove the restricted +DDD from the main text model
 - do the genetics model as a logit student here too??
 - tidying up model control params (iter, chains, delta...)
+- choose colors that are colorblind AND greyscale friendly (the front/core ones are currently NOT)
 
 ```{r importing-data}
 data <- read_csv(file=here("NetLogo_output/model-output.csv"))
@@ -165,24 +167,44 @@ data_genetics %>% ungroup() %>%
   stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.25)+
   scale_y_continuous("Variance in fraction")+
   facet_grid(cols=vars(treatment),rows=vars(is.front,K))+
-  theme_bw()
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
 
 
 
 data_genetics %>% ungroup() %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  #filter(treatment != "reduced + DDD") %>% 
   select(treatment,is.front,K) %>% 
+  mutate(Location=factor(is.front)) %>% 
+  mutate(Location=fct_recode(Location,front="TRUE",core="FALSE")) %>% 
+  mutate(Location=fct_relevel(Location,"front","core")) %>% 
   distinct() %>% 
   mutate(ticks=1) %>% 
   add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
   mutate(.value=10^(.value)) %>% 
   ggplot()+
-  stat_eye(aes(x=K,fill=is.front,group=is.front,y=.value),position="dodge",normalize="xy")+
-  facet_grid(cols=vars(treatment))+
-  scale_y_log10(name=expression(paste("genetic diversity decay rate  ",lambda)))+
+  stat_eye(aes(x=K,fill=Location,group=Location,y=.value),position="dodge",normalize="xy")+
+  facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
+  scale_y_continuous(name=expression(paste("genetic diversity decay rate  ",lambda)))+
   scale_x_discrete("equilibrium population size K")+
-  scale_fill_manual("Location",labels=c("core","front"),values=c("#56B4E9","#E69F00"))+
-  #scale_colour_manual("Location",labels=c("core","front"),values=c("#56B4E9","#E69F00"))+
-  theme_bw()
+  scale_fill_manual("Location",values=c("#E69F00","#56B4E9"))+
+  #scale_colour_manual("Location",values=c("#E69F00","#56B4E9"))+
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
+
+#alternate theme, needs cowplot and ggtext to work
+#    theme_half_open(12) +
+#    background_grid() +
+#    theme(
+#        strip.background = element_blank(),
+#        strip.text = element_textbox(
+#            size = 12,
+#            color = "black", fill = "grey90", box.color = "grey",
+#            halign = 0.5, r = unit(0, "pt"), width = unit(1, "npc"),height = unit(36, "pt"),
+#            padding = margin(2, 2, 2, 2), margin = margin(3, 3, 3, 3)
+#        )
+#    )
 ```
 
 ## front
@@ -196,7 +218,8 @@ thresholds <- data_front %>%
   pivot_longer(cols=c(velocity_fisher,threshold_pushed),
                values_to = "threshold_value",names_to = "threshold_type") %>% 
   mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
-                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed"))
+                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
 
 #not shown 
 data_front%>% 
@@ -215,7 +238,9 @@ data_front%>%
   facet_grid(cols=vars(treatment),rows=vars(paste("K = ",K,sep="")),space= "free_x",scale="free_x")+
   geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
 
-data_front %>% 
+data_front %>%
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  #filter(treatment != "reduced + DDD") %>% 
   ungroup() %>% 
   mutate(replicateID= replicateID[1],ticks=1) %>% 
   select(treatment,ticks,replicateID,K) %>% 
@@ -233,8 +258,9 @@ data_front %>%
                          expression(italic(v[F])))
                        )+
   facet_grid(cols=vars(treatment))+
-  theme_bw()+ 
-  theme(legend.position = c(0.95, 0.3))
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")+
+  theme(legend.title=element_blank(),legend.position = c(0.86, 0.3),legend.background = element_rect(fill = "white",colour = "black"),legend.margin=margin(t=2,r=2,l=2,b=2))
 
 data_front %>% 
   ungroup() %>% 

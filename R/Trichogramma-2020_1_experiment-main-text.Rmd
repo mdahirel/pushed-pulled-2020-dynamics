@@ -63,7 +63,7 @@ library(here)
 Nearly everything is done and clean, but still a few things to perfect:
 
 - check priors for parameters that have been multiplied by *X* to make them fit within "general priors" (and all the others)
-- find a valid colour code (reminder: need 6 different colours, a subgroup of 4 for treatment plots and a subgroup of 2 for front/core plots, ideally qualitative scales, colourblind- and BW-friendly at least within each subgroup)
+- find a valid colour code !!! choose colors that are colorblind AND greyscale friendly (the front/core ones are currently NOT)
 - maybe more markdown comments?
 - clean and tidy code, re-arrange order of lines in ggplot code
 - check all loaded packages are still actually useful
@@ -97,7 +97,8 @@ mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_ch
   scale_x_log10(name="Population size before dispersal phase")+
   scale_color_gradient(name="Mean dispersal rate",low="black",high="grey60") +
   geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=dispersal.rate),nudge_x = -2)+
-  theme_bw()+
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95") +
   theme(legend.position = "none")
 ### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
 ### when even with low dispersal founding units were probably rarely below the 100s
@@ -337,7 +338,7 @@ We here assume each front initially advances at a speed that may not be the asym
 bf_front <- bf(front~log(speed*Generation), 
                nlf(speed~speedasym+(speedstart-speedasym)*exp(-(Generation-1)*rate)),
                ##Generation - 1 because moving the startspeed away from t0 (where it doesn't actually exist) to t1 stabilises everything
-               nlf(rate~exp(lograte)),
+               nlf(rate~10^(lograte)),
                nlf(speedasym~exp(logspeedasym)),
                nlf(speedstart~exp(logspeedstart)),
            logspeedasym~0+Treatment+(1|1|landscapeID),
@@ -401,7 +402,7 @@ prior_genetics=c(
 
 bf_genetics=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
-               nlf(decay~exp(logdecay)/10),
+               nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
                logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
                family=student(),nl=TRUE)
@@ -446,7 +447,7 @@ Well, we did both, and the former outperforms the others, maybe because it accou
 ```{r model-genetics-beta, eval = FALSE}
 bf_genetics2=bf(Hexp~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
-               nlf(decay~exp(logdecay)/10),
+               nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
                logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
                nlf(phi~1/invphi),
@@ -480,7 +481,7 @@ While we can't directly compare the Student on logits and the Beta models with L
 ```{r model-genetics-logit-normal, eval = FALSE}
 bf_genetics3=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
-               nlf(decay~exp(logdecay)/10),
+               nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
                logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
                family=gaussian,nl=TRUE)
@@ -513,6 +514,11 @@ loo1<-loo(mod_genetics)
 loo3<-loo(mod_genetics3, reloo=TRUE)  ##reloo = TRUE needed because some "problematic" obs with high pareto_k
 
 loo_compare(loo1,loo3)
+
+data_genetics$elpd1 <- loo1$pointwise[,"elpd_loo"]
+data_genetics$elpd3 <- loo3$pointwise[,"elpd_loo"]
+
+table(data_genetics$elpd1-data_genetics$elpd3 > 0)
 
 ##evidence that logit-student is better
 #####
@@ -603,7 +609,9 @@ p1 <- data_front %>%
   scale_fill_manual(values=TRTpalette[c(1,4)])+
   scale_colour_manual(values=TRTpalette[c(1,4)])+
   scale_y_continuous("Front location (patches from release)")+
-  facet_wrap(~Treatment)
+  facet_wrap(~Treatment) +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
   
   
 ## PART 2: posterior of the key parameter: asymptotic speed 
@@ -618,11 +626,13 @@ p2 <- data_front %>%
   geom_eye(aes(x=Treatment,y=.value,fill=Treatment),slab_alpha=0.3,point_interval = mean_hdi)+
   scale_fill_manual(values=TRTpalette[c(1,4)])+
   scale_x_discrete("Landscape type")+
-  scale_y_continuous("Asymptotic velocity (patches per generation, posterior)")
+  scale_y_continuous("Asymptotic velocity (patches per generation, posterior)") +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
 
 
 
-p1 / p2 + plot_annotation(tag_levels="A") + plot_layout(guides="collect") & theme_bw() &
+p1 / p2 + plot_annotation(tag_levels="A") + plot_layout(guides="collect") &
   theme(legend.position="none")
 
 
@@ -654,25 +664,29 @@ p1 <- data_genetics %>%
   ggplot()+
   stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
   geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+
+  #alternate geom_point, to display the difference in elpd between logit student and logit normal through point size:
+  #geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location,size=elpd1-elpd3),pch=21)+
   scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
   scale_y_continuous(name = "Genetic diversity (Hexp)") +
   scale_x_continuous(name = "Generations since start") +
   facet_wrap(~Treatment) + 
-  theme_bw()
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
 
 p2<- data_genetics %>%  
   mutate(landscapeID = landscapeID[1], Generation = 1) %>% 
   select(landscapeID,is.front,Location,Treatment,Generation) %>% 
   distinct() %>% 
   add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
-  mutate(.value=exp(.value)) %>% 
+  mutate(.value=10^(.value)) %>% 
   filter(is.front!=0) %>% 
   ggplot()+
   geom_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
   scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
   facet_wrap(~Treatment)+
   scale_y_continuous(expression(paste("genetic diversity decay rate  ",lambda))) +
-  theme_bw()+
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95",colour.minor = "grey95") +
   theme(legend.position = "none")
 
 p1/p2 +plot_annotation(tag_levels = "A") + plot_layout(guides="collect")
