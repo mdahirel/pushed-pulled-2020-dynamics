@@ -671,7 +671,7 @@ p2<- data_genetics %>%
   geom_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
   scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
   facet_wrap(~Treatment)+
-  scale_y_continuous("Decay rate of genetic diversity (posterior)") +
+  scale_y_continuous(expression(paste("genetic diversity decay rate  ",lambda))) +
   theme_bw()+
   theme(legend.position = "none")
 
