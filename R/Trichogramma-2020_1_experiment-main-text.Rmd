@@ -260,7 +260,9 @@ Then we convert allele columns in a format that allows us to calculate expected 
 ```{r data-genetics-2, eval=FALSE}
 ### STEP 2 isolate the genetics markers
 genmat<- df2genind(select(data_genetics,starts_with("P")),####all allelic columns start with a "P"
-            ncode=3,ind.names=data_genetics$ID,pop=data_genetics$spacetimeID) #ncode=3 bc 3 characters for one allele
+            ncode=3,
+            NA.char = "000",
+            ind.names=data_genetics$ID,pop=data_genetics$spacetimeID) #ncode=3 bc 3 characters for one allele
 
 #sum(rowSums(genmat@tab)<38) ## quality check: should be zero, indicating all individuals have 2 alleles for each of the 19 loci
 
@@ -700,7 +702,7 @@ newdata <- data_genetics %>%
   filter(is.front!=0) %>% 
   distinct() %>% 
   add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
-  mutate(.value=exp(.value)) 
+  mutate(.value=10^(.value)) 
 
 ## differences in decay between treatments per location
 newdata %>% 
