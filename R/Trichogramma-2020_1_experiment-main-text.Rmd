@@ -153,11 +153,9 @@ The `raw_genetics` dataset has two types of variables:
 
 ## Data preprocessing
 
-We first play with the dynamics dataset. From the raw dataset we want to produce two ready-to-analyse datasets:
+### Dataset front: speed of the advancing range expansions
 
-- (1) `data_G0`: used to estimate how many offspring are produced in "new" patches during the 1st generation. This allows us to check indirectly whether the setup truly limit connectedness. We can only do that at the start of the experiment as it is only then we know all parents were born/released in the same patch; afterward impossible to know how many parent patches contribute to these.  
-
-- (2) `data_front` : used to estimate how fast the wave fronts advance
+We first play with the dynamics dataset. From the raw dataset we want to produce a `data_front` dataset, to estimate how fast the wave fronts advance
 
 We first need to make an intermediate dataset where we extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (control) and `PS` (restricted connectedness) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results:
 
@@ -178,36 +176,6 @@ data_popsize_temp<- raw_dynamics %>%
   mutate(Treatment = fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
 ```
   
-  
-### Dataset G0: spread of eggs laid by the original generation
-
-Once this is done, we can select patches where Generation 0 laid eggs (i.e. Generation 1 egg plates), and use information about parasitism rate in each to estimate `distmean` the mean distance between egg and release site in each landscape (and for each `Macro`): 
-
-```{r data-G0, eval = FALSE}
-###a subdataset only containing info on G0
-data_G0 <- filter(data_popsize_temp,Generation==1 & Patch<=4) %>%  
-  ##only patches 0 to 4 are available at start (adding "Patch <=4" above should not be necessary, but it makes it explicit)
-  select(landscapeID,Mix,Treatment,Patch,Peggs_est,Macro) %>% 
-  ungroup() %>% 
-  pivot_wider(.,names_from="Patch",values_from=c("Peggs_est"),names_prefix = "P") %>% 
-  filter(is.na(P0)==FALSE) %>%   ## remove the row with the one macro with missing info for "resident" eggs (can't estimate dispersal)
-  mutate(P1=replace_na(P1,0)) %>% 
-  mutate(P2=replace_na(P2,0)) %>% 
-  mutate(P3=replace_na(P3,0)) %>% 
-  mutate(P4=replace_na(P4,0))  %>% 
-  mutate(Pall=(P0+P1+P2+P3+P4)) %>% 
-  mutate(distmean = (1*P1+2*P2+3*P3+4*P4) / Pall, ## mean distance from release
-         scale_Pall = scale(Pall)) %>%   
-  mutate(jitteredTRT=jitter(as.numeric(factor(Treatment)))) %>% ## for pretty plotting
-  group_by(landscapeID) %>% mutate(jitteredTRT=mean(jitteredTRT)) %>%  ##ensures same jitter for same measure from different macros
-  ungroup()
-```
-
-Note that `distmean` is a proxy of dispersal/ connectivity, **not** an actual dispersal distance, at least in the sense of "average distance travelled by dispersing individuals" /* . Indeed, the number of eggs laid is not necessarily proportional to number of famales, as it may depend on phenotype (dispersers/ residents), and on available hosts (which are more abundant *per capita* farther from the release in more empty patches). 
-
-/* But it is a dispersal distance in the sense of "average distance between one generation and the next" (it's complicated, ugh)
-
-### Dataset front: speed of the advancing range expansions
 
 Here we use the fact that only patches with parasitoids are in the dataset to get the front location in each landscape at each time: it is simply the location of the farthest colonised patch (+ some minor tidying up, again):
 
@@ -264,8 +232,6 @@ genmat<- df2genind(select(data_genetics,starts_with("P")),####all allelic column
             NA.char = "000",
             ind.names=data_genetics$ID,pop=data_genetics$spacetimeID) #ncode=3 bc 3 characters for one allele
 
-#sum(rowSums(genmat@tab)<38) ## quality check: should be zero, indicating all individuals have 2 alleles for each of the 19 loci
-
 ### STEP 3 generate summary of all other columns ; one row = one sampled patch
 data_genetics <- data_genetics %>%   
   group_by(spacetimeID) %>% 
@@ -287,49 +253,6 @@ Our metric of genetic diversity (expected heterozygosity) is stored in `Hexp`.
 
 Now we have everything we need, we can fit some models! (see manuscript for details)
 
-### Dataset G0: spread of eggs laid by the original generation
-
-We fit a model assuming the "true" mean distance in each landscape depends on treatment, and that we can only observe it through macros/observers that are each systematically biased, but combined fall back on the underlying true value. The model uses a Beta distribution to account for the fact distances cannot exceed 4 patches from release :
-
-```{r model-g0, eval=FALSE}
-
-mod_G0 <- brm(bf(distmean/4~0+Treatment+(1|Macro), 
-                 ###divided by 4 because it's the maximal possible distance possible at G0
-        nlf(phi~1/invphi),
-        invphi~1),
-        data=data_G0,family=Beta(link_phi="identity"),
-        iter=2000,chains=4,
-        prior=c(
-          set_prior("normal(0,1.5)",class="b"),
-          set_prior("normal(0,1)",class="sd"),
-          set_prior("normal(0,1)",nlpar="invphi",lb=0)
-        ),
-        control=list(adapt_delta=0.99),seed=42)
-```
-
-
-```{r summary-model-G0, eval=FALSE}
-summary(mod_G0)
-#great, but gives mean and quantile intervals as summary stats.
-#what if we want something else, like higher posterior density intervals??
-# (should be very similar for most fixed model parameters, as they are approx. Gaussian, but might differ for variance)
-
-summary_G0 <- mod_G0 %>%
-  posterior_samples() %>%
-  select(starts_with(c("Intercept", "b_", "sd_", "invphi"))) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>% 
-  print(n=Inf)
-
-mcmc_rank_overlay(mod_G0, pars = summary_G0$name)
-
-###prediction intervals around each point
-ppc_ribbon(yrep=predict(mod_G0,summary=FALSE),
-           x=rank(predict(mod_G0)[,1]),
-           y=data_G0$distmean/4,
-           prob = 0.5, prob_outer=0.95)
-```
 
 ### Dataset front: speed of the advancing range expansions
 
@@ -536,60 +459,6 @@ TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so
 frontcorePalette <- c("#000000", "#E69F00", "#56B4E9") # 3 colors, for origin (black), front and core patches
 
 ```
-
-### Dataset G0: spread of eggs laid by the original generation
-
-
-```{r figure-G0, eval=FALSE}
-
-newdata <- data_G0 %>% 
-  mutate(Macro=Macro[1]) %>%  #it's just a placeholder, we plot the posterior for the "true" (grand) mean distance, without random effects
-  select(Macro, Treatment) %>% 
-  distinct()
-
-## these averages are just indicative and for plotting purposes
-data_G0_avg <- data_G0 %>% 
-  group_by(landscapeID,Treatment)%>%  
-  summarise(distmean=mean(distmean),
-            jitteredTRT=mean(jitteredTRT)) %>% ungroup()
-
-## the main plot                                                           
-p1 <-newdata %>% 
-  add_fitted_draws(mod_G0,re_formula=NA) %>% 
-  ggplot()+
-  stat_eye(aes(x=Treatment,y=.value*4,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
-  ## we put both observed points (by macros) and the indicative averages for each each landscape
-  geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
-  geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
-  scale_fill_manual(values=TRTpalette[c(1,4)])+
-  scale_colour_manual(values=TRTpalette[c(1,4)])+
-  scale_x_discrete("")+
-  scale_y_continuous("Mean egg-laying distance from release site (patches)",limits=c(0,2.2))+
-  theme_bw()
-
-## a subplot showing the difference between treatments. Keep it or put this info in text?
-p2<- newdata %>% 
-  add_fitted_draws(mod_G0,re_formula=NA) %>% 
-  ungroup() %>% 
-  compare_levels(variable=.value,by=Treatment) %>% 
-  ggplot()+
-  stat_eye(aes(x=Treatment,y=.value*4),.width=c(0.66,0.95),fill="grey",point_interval = mean_hdi)+
-  scale_x_discrete("",labels="")+
-  scale_y_continuous("Difference between treatments",
-                     limits=c(0,2.2)-4*invlogit(fixef(mod_G0)["Treatmentcontrol","Estimate"])) + ##so the "difference" subplot is aligned with the main
-  geom_hline(yintercept=0, lty=2) +
-  theme_bw()
-
-p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
-  theme(legend.position="none")
-
-
-##aside: very roughly showing that there is indeed consistent macro-level bias even on distances
-## data_G0 %>% group_by(landscapeID) %>% mutate(DD=mean(distmean)) %>% ggplot()+ geom_boxplot(aes(x=Macro,y=distmean/DD))
-## likely reason: because macro that over/underestimates parasitism rates will over/underestimate # of eggs in "other patches" so over/underestimate distances
-  
-```
-
 
 ### Dataset front: speed of the advancing range expansions
 

@@ -91,15 +91,15 @@ data_front <- data %>%
 
 ```{r}
 prior_genetics=c(
-  set_prior("normal(0,1.5)",nlpar=c("logitHasym")),
+  set_prior("normal(0.25,1.5)",nlpar=c("logitVmax")), #informative prior
   set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
   set_prior("normal(0,1)",nlpar="invphi",lb=0)
 )
 
-bf_genetics <- bf(varP1~logit(Hasym*(1-exp(-(ticks)*decay))),
-                  nlf(Hasym~inv_logit(logitHasym)),
+bf_genetics <- bf(varP1~logit(Vmax*(1-exp(-(ticks)*decay))),
+                  nlf(Vmax~inv_logit(logitHasym)),
                   nlf(decay~10^(logdecay)),
-                  logitHasym~1,
+                  logitVmax~1,
                   logdecay~0+treatment:is.front:K,
                   nlf(phi~1/invphi),
                   invphi~1,
