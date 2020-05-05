@@ -138,7 +138,7 @@ And we're go for running the simulations! We set a "distinct" simulation design 
 
 ```{r running-simulations}
 
-set.seed(42) ##we set seed here to guarantee the seeds selected below are the same everytime
+set.seed(1989) ##we set seed here to guarantee the seeds selected below are the same everytime
 nl_object@simdesign<-simdesign_distinct(nl=nl_object,nseeds=nreplicates)
 
 exp1_2020 <- run_nl_all(nl_object)

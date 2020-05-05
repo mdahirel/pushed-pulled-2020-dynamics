@@ -1,13 +1,12 @@
 ---
-title: "Supplementary Material for "
-author: "Maxime Dahirel"
+title: "Supplementary Material for PENDING TITLE"
+author: "Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Lionel Roques, Elodie Vercken (code by M. Dahirel)"
 date:
 output: 
   html_document:
     theme: yeti
     toc: TRUE
     toc_float: TRUE
-    code_download: TRUE
 editor_options:
   chunk_output_type: console
 bibliography: references.bib
@@ -42,11 +41,13 @@ library(bayesplot)
 
 ```
 
+**Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, is available on GitHub (LINK TO ADD) and Zenodo (DOI TO ADD).
+
 # S1 - Creation of genetic lines
 
-*Trichogramma brassicae* wasps used in this experiment were derived from hybrid populations created in 2013 by mixing parental strains sampled in 24 sites different geographic sites in Western Europe.  These parental strains were initially collected for the purpose of a project on artificial selection and phenotype amelioration of *T. brassicae* strains for biological control. Isoline populations were then maintained under standard conditions between 2014 and 2016 (18 ± 0.5 °C, 65 ± 10% relative humidity, L:D 18:6), for approximately 20 generations. 
+*Trichogramma brassicae* wasps used in the experiment were derived from hybrid populations created in 2013 by mixing parental strains sampled in 24 sites in Western Europe.  These parental strains were initially collected for a project on artificial selection and phenotype amelioration of *T. brassicae* strains for biological control. Isoline populations were then maintained under standard conditions between 2014 and 2016 (18 ± 0.5 °C, 65 ± 10% relative humidity, L:D 18:6), for approximately 20 generations. 
 
-To generate independent experimental replicates with comparable levels of initial genetic diversity, we created three genetic mixes from three isoline populations each (using nine distinct isoline populations in total). We followed the protocol from Fellous *et al.*  [-@fellousCombiningExperimentalEvolution2014] to create mixes with homogeneous genetic background (i.e. similar representation of each of the three isolines). First, we performed all possible two-by-two crosses between the three isolines. The F1 progeny of each two-by-two cross was then crossed with the third remaining isoline. The F2 individuals from these crosses were then inbred for 2 generations to favour recombination. Individuals from these F4 were then mixed all together in equal proportions to form each final genetic mix. While they did differ from each other, all three mixes had broadly similar levels of genetic diversity at the start of the experiments (**Supplementary Figure S1.1**).
+To generate independent experimental replicates with comparable levels of initial genetic diversity, we created three genetic mixes from three isoline populations each (using nine distinct isoline populations in total). We followed the protocol from Fellous *et al.*  [-@fellousCombiningExperimentalEvolution2014] to create mixes with homogeneous genetic background (i.e. similar representation of each of the three ancestral isolines). First, we performed all possible two-by-two crosses between the three isolines. The F1 progeny of each two-by-two cross was then crossed with the third remaining isoline. The F2 individuals from these crosses were then inbred for 2 generations to favour recombination. Individuals from these F4 were then mixed all together in equal proportions to form each final genetic mix. While they did differ from each other, all three mixes had broadly similar levels of genetic diversity at the start of the experiments (**Supplementary Figure S1.1**).
 
 ```{r supplementary-figure-1}
 raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
@@ -99,9 +100,9 @@ data_genetics %>%
 
 # S2 - Validating computer estimates of *Trichogramma* population sizes
 
-For analyses asking for population sizes (Supplementary Material 3 and 8), the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of population size / parasitism rate.
+For analyses asking for population sizes (Supplementary Material 3 and 8), the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of parasitism rate/ population size.
 
-To assess the validity of these automated counts, we manually counted egg plates from 197 patches (out of 2725 photographed for the experiment) roughly spanning the full range of possible population sizes (human count range: 17 to 443; number of hosts per population ≈ 450). 
+To assess the validity of these automated counts, we manually counted parasitized egg plates from 197 patches (out of 2725 photographed for the experiment) roughly spanning the full range of possible population sizes (human count range: 17 to 443; number of hosts per population ≈ 450). 
 
 ```{r data-validate}
 
@@ -126,6 +127,13 @@ data_validate<- raw_dynamics %>%
 ```
 
 ```{r model-validate}
+
+if(file.exists(here("R_output","supplementary","model_S2_computercounts.Rdata")))
+  {
+  load(here("R_output","supplementary","model_S2_computercounts.Rdata"))
+  }else
+    {
+
 prior_validate=c(
     set_prior("normal(0,1.5)",class="Intercept",resp="Neggsobs"),
     set_prior("normal(0,1)",class="sd",resp="Neggsobs"),
@@ -145,8 +153,12 @@ bf_validate_estimated=bf(Peggs_est~(1|1|spacetimeID),
 mod_validate=brm(
     mvbf(bf_validate_obs+bf_validate_estimated),
     data=data_validate,
-    chains=4,iter=4000,prior=prior_validate,seed=42
+    chains=4,iter=22000,warmup=2000,prior=prior_validate,seed=42
 )
+
+
+save(list="mod_validate",file=here("R_output","supplementary","model_S2_computercounts.Rdata"))
+}
 
 cor_latent <-posterior_samples(mod_validate) %>% select(.value=contains("cor")) %>% mean_hdi()
 
@@ -176,14 +188,20 @@ diff_obs_est<-preds %>%
   group_by(.draw) %>% 
   summarise(diff=100*mean(diff)) %>% 
   mean_hdi()
+
 ```
 
-We then used a bivariate generalized linear mixed model approach to compare computer estimates and human counts, with a Beta family used for the former and a binomial distribution for the latter. This approach accounts for the data structure and the fact both human- and computer-derived counts are likely estimated with error [@perezMethodeAnalyseImage2017]. It allows us to estimate the correlation between human counts and “consensus” computer counts using information from all macros. Both models included a random intercept of population/patch identity, which were correlated.  Estimated and human-observed parasitism rates were highly correlated both on the latent logit scale (*r*= `r round(cor_latent$.value,2)` [`r round(cor_latent$.lower,2)`; `r round(cor_latent$.upper,2)`]) and on the observed scale (*r* = `r round(cor_obs$.value,2)` [`r round(cor_obs$.lower,2)`; `r round(cor_obs$.upper,2)`]). There was also no evidence of bias (predicted difference between average observed and estimated parasitism rates, in % of hosts per patch = `r round(diff_obs_est$diff,2)`% [`r round(diff_obs_est$.lower,2)`; `r round(diff_obs_est$.upper,2)`])
+We then used a bivariate generalized linear mixed model approach to compare computer estimates and human counts, with a Beta family used for the former and a binomial distribution for the latter. Both models contained a fixed-effect intercept as well as random intercepts of population/patch identity, which were correlated. This approach accounts for the data structure and the fact both human- and computer-derived counts are likely estimated with error [@perezMethodeAnalyseImage2017]. It allows us to estimate the correlation between human counts and “consensus” computer counts obtained from pooling information from all macros. Estimated and human-observed parasitism rates were highly correlated both on the latent logit scale (*r*= `r round(cor_latent$.value,2)` [`r round(cor_latent$.lower,2)`; `r round(cor_latent$.upper,2)`]) and on the observed scale (*r* = `r round(cor_obs$.value,2)` [`r round(cor_obs$.lower,2)`; `r round(cor_obs$.upper,2)`]). There was also no evidence of bias (predicted difference between average "human" and "computer" parasitism rates, in % of hosts per patch = `r round(diff_obs_est$diff,2)`% [`r round(diff_obs_est$.lower,2)`; `r round(diff_obs_est$.upper,2)`])
 
-We then refitted this model, this time adding a fixed effect of the macro in the "computer estimates" part of the model, to determine whether macros presented systematic biases. We found that the overall absence of bias of the "consensus" estimates (see above) actually resulted from most macros slightly underpredicting "true" parasitism rates while one consistently overpredicted them (**Supplementary Figure S2.1**).
+We then refitted this model, this time adding a fixed effect of the macro in the "computer estimates" submodel, to determine whether macros presented systematic biases. We found that the overall absence of bias of the "consensus" estimates (see above) actually resulted from most macros slightly underpredicting human-observed parasitism rates while one consistently overpredicted them (**Supplementary Figure S2.1**).
 
 ```{r model-validate2}
-prior_validate=c(
+if(file.exists(here("R_output","supplementary","model_S2_computercountsbymacro.Rdata")))
+  {
+  load(here("R_output","supplementary","model_S2_computercountsbymacro.Rdata"))
+  }else
+    {
+    prior_validate=c(
     set_prior("normal(0,1.5)",class="Intercept",resp="Neggsobs"),
     set_prior("normal(0,1)",class="sd",resp="Neggsobs"),
     
@@ -202,9 +220,11 @@ bf_validate_estimated=bf(Peggs_est~0+Macro+(1|1|spacetimeID),
 mod_validate2=brm(
     mvbf(bf_validate_obs+bf_validate_estimated),
     data=data_validate,
-    chains=4,iter=10000,prior=prior_validate,seed=42
+    chains=4,iter=22000,warmup=2000,prior=prior_validate,seed=42
 )
 
+save(list="mod_validate2",file=here("R_output","supplementary","model_S2_computercounts.Rdata"))
+    }
 
 obs<- data_validate %>% ungroup() %>% 
   mutate(spacetimeID=spacetimeID[1],Neggs_obs=1) %>% 
@@ -225,7 +245,7 @@ data_validate %>% ungroup() %>%
   theme_bw()
 ```
 
-**Supplementary Figure S2.1** Posterior mean estimated parasitism rate, by macro, for the 197 plates used to compare human and computer counts. Horizontal lines denote the mean (bold line) and 95% credible interval (dotted lines) for the posterior mean parasitism rate based on human counts.
+**Supplementary Figure S2.1** Posterior mean estimated parasitism rate, by computer macro, for the 197 plates used to compare human and computer counts. Horizontal lines denote the mean (bold line) and 95% credible interval (dotted lines) for the posterior mean parasitism rate based on human counts.
 
 # S3 – Validation of the experimental design
 
@@ -271,18 +291,27 @@ data_G0 <- filter(data_popsize_temp,Generation==1 & Patch<=4) %>%
 
 ```{r model-g0}
 
-mod_G0 <- brm(bf(distmean/4~0+Treatment+scale_Pall+(Treatment+scale_Pall|Macro), 
+if(file.exists(here("R_output","supplementary","model_S3_initialdispersal.Rdata")))
+  {
+  load(here("R_output","supplementary","model_S3_initialdispersal.Rdata"))
+  }else
+    {
+
+mod_G0 <- brm(bf(distmean/4~0+Treatment+scale_Pall+(1|Macro), 
                  ###divided by 4 because it's the maximal possible distance possible at G0
         nlf(phi~1/invphi),
         invphi~1),
         data=data_G0,family=Beta(link_phi="identity"),
-        iter=2000,chains=4,
+        iter=5000,chains=4,
         prior=c(
           set_prior("normal(0,1.5)",class="b"),
           set_prior("normal(0,1)",class="sd"),
           set_prior("normal(0,1)",nlpar="invphi",lb=0)
         ),
         control=list(adapt_delta=0.99),seed=42)
+
+save(list="mod_G0",file=here("R_output","supplementary","model_S3_initialdispersal.Rdata"))
+}
 ```
 
 ```{r figure-G0}
@@ -335,146 +364,77 @@ p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
   
 ```
 
-**Supplementary Figure S3.1.** Mean egg-laying distance from release patch as a function of treatment. Shaded areas: posterior distribution (assuming total fecundity fixed to its average); black dots and segment: posterior mean and 66/95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate.
+**Supplementary Figure S3.1.** Left: Mean egg-laying distance from release patch as a function of treatment. Colored areas: posterior distribution (assuming total fecundity fixed to its average); black dots and segment: posterior mean and 66/95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate. Right: posterior difference between the two experimental treatments.
 
 
 # S4 - Detailed description of models (main text)
 
-We here describe the full structure of the models presented in the main text, as well as associated prior choices. We follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020].Variable names are reset from one model to the next, for simplicity.
+We here describe the full structure of the models presented in the main text, as well as associated prior choices. We follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables. All Beta models described in here and in S9 use the (mean, precision) parametrisation of the Beta distribution.
 
 ## S4.1 - Genetic diversity, experimental data
 
-We can describe the expected heterozygosity $H_{x,i,t}$ of a patch in replicate $i$, with $x$ denoting the location of that patch (0 for core patches, 1 for front patches) and $t$ the number of generations since release, the following way:
+We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a patch in replicate $i$, with $x$ denoting the location of that patch (0 for core patches, 1 for front patches) and $t$ the number of generations since release, the following way:
 
 $$ 
-\begin{equation}
-\tag{S4.1-1}
-logit(H_{x,i,t}) \sim StudentT(logit(\mu_{x,i,t}) , \sigma_{d} , \nu ) 
-\end{equation}
+\mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu )
 $$
 where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the residual standard deviation and $\nu$ the number of degrees of freedom. 
 
 Based on theory, we expect average genetic diversity to decline exponentially with time: 
 
 $$ 
-\begin{equation}
-\tag{S4.1-2}
-\mu_{x,i,t} =   H_{i,t=0} \times  \exp(-\lambda_{x,i} \times t) 
-\end{equation}
+\mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t)
 $$
 
-The two parameters $H_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (control or restricted connectedness) and location (core or front) as follow:
+The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (control or restricted connectedness) and location (core or front) as follow:
 
 $$
-\begin{equation}
-\tag{S4.1-3}
-logit(H_{i,t=0}) = \beta_{0} + \alpha_{i} 
-\end{equation}
+\mathrm{logit}(\mu_{i,t=0}) = \beta_{0} + \alpha_{i}
 $$
 
 $$
-\begin{equation}
-\tag{S4.1-4}
-log_{10}(\lambda_{x,i}) = \beta_{1[TREATMENT]}+\beta_{2[TREATMENT]}(x-0.5) + \gamma_{i} + \zeta_{i}(x-0.5)
-\end{equation}
+\log_{10}(\lambda_{x,i}) = \beta_{1[\text{TREATMENT}[i]]}+\beta_{2[\text{TREATMENT[i]}]}(x-0.5) + \gamma_{i} + \zeta_{i}(x-0.5)
 $$
-(with $logit$ and $log_{10}$ transformations here to ensure both parameters stay within bounds).
-Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location (here centred, which makes it possible to fit the model even though data at t=0 are neither from the front or the core) and their interaction. In addition, both the average decline rate and the front-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
+(with $\mathrm{logit}$ and $\log_{10}$ transformations here to ensure both parameters stay within bounds). 
+
+Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "front" do not really exist). In addition, both the average decline rate and the front-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
 
 The random effects are distributed as following: 
 
 $$
-\begin{equation}
-\tag{S4.1-5}
 \begin{bmatrix}
 \alpha_{i} \\
 \gamma_{i} \\
 \zeta_{i} \\
 \end{bmatrix} \sim 
-MVNormal(
+\mathrm{MVNormal}(
 \begin{bmatrix}
 0\\
 0\\
 0\\
 \end{bmatrix},\boldsymbol{\Omega})
-\end{equation}
 $$
 with $\boldsymbol{\Omega}$ the covariance matrix:
 
 $$
-\begin{equation}
-\tag{S4.1-6}
 \boldsymbol{\Omega} = 
 \begin{bmatrix}
 \sigma_{\alpha} & 0 & 0 \\
 0 & \sigma_{\gamma} & 0 \\
 0 & 0 & \sigma_{\zeta} \\
 \end{bmatrix} 
-\times \boldsymbol{R} \times
+\times \boldsymbol{\mathrm{R}} \times
 \begin{bmatrix}
 \sigma_{\alpha} & 0 & 0 \\
 0 & \sigma_{\gamma} & 0 \\
 0 & 0 & \sigma_{\zeta} \\
 \end{bmatrix}
-\end{equation}
 $$
-where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{R}$ the corresponding correlation matrix.
+where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
-We used weakly informative priors mostly following McElreath [-@mcelreathStatisticalRethinkingBayesian2020]:
+We used weakly informative priors mostly following McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. For the fixed intercept of the initial diversity $\beta_{0}$, which corresponds to the logit of a proportion, we used a $\mathrm{Normal}(0,1.5)$, which gives a relatively flat prior when converted back to proportions. For all other fixed effects parameters $\beta_{j|j > 0}$, we used a $\mathrm{Normal}(0, 1)$ prior (note that results are overall insensitive to fixing both standard deviations to 1 or to 1.5). All standard deviation parameters $\sigma$ (including the distributional standard deviation $\sigma_{d}$) were attributed the same $\mathrm{Half\mbox{-}Normal}(0,1)$ prior. For the random effect correlation matrix $\boldsymbol{\mathrm{R}}$ we used a LKJ $\mathrm{LKJCorr}(2)$ prior mildly skeptical of high correlations, while we used a $\mathrm{Gamma}(2,0.1)$ for the degrees of freedom $\nu$, based on Stan developers recommendations (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations).
 
-$$ 
-\begin{equation}
-\tag{S4.1-7}
-\beta_{0} \sim Normal(0,1.5) 
-\end{equation}
-$$
-as it corresponds to the logit of a proportion. For all other fixed effect parameters:
-
-$$
-\begin{equation}
-\tag{S4.1-8}
-\beta \sim Normal(0, 1) 
-\end{equation}
-$$
-(note that results are overall insensitive to fixing both standard deviations to 1 or to 1.5).
-
-
-All standard deviation parameters (including the distributional standard deviation $\sigma_{d}$) were attributed the same prior:
-
-$$ 
-\begin{equation}
-\tag{S4.1-9}
-\sigma \sim halfNormal(0,1) 
-\end{equation}
-$$
-the random effect correlation matrix a prior mildly skeptical of high correlations:
-
-$$
-\begin{equation}
-\tag{S4.1-10}
-R \sim LKJCorr(2)
-\end{equation}
-$$
-while we used 
-
-$$
-\begin{equation}
-\tag{S4.1-12}
-\nu \sim Gamma(2,0.1)
-\end{equation}
-$$
-
-for the degrees of freedom based on Stan developers recommendations (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations).
-
-An alternative model can be written, where $H_{x,i,t} \sim Beta(\mu_{x,i,t}, \phi)$, using the (mean, precision) parametrisation of the Beta distribution, but it has a lower predictive performance (see Methods in the main text, and associated supplementary data and code). Following recommendations for weakly informative priors (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations), we use a half-Normal prior on the inverse of the precision parameter $\phi$ :
-
-$$
-\begin{equation}
-\tag{S4.1-13}
-1/\phi\sim halfNormal(0,1)
-\end{equation}
-$$
-
+An alternative model can be written, where $H_{x,i,t} \sim \mathrm{Beta}(\mu_{x,i,t}, \phi)$, but it has a lower predictive performance (see Methods in the main text, and associated supplementary data and code). Following recommendations for weakly informative priors (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations), we use there a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior on the inverse of the precision parameter $\phi$ (all other parameters and priors are as described above).
 
 ### S4.2 - Genetic diversity, simulated data
 
@@ -482,41 +442,44 @@ In our simulations, it is not possible to analyse genetic diversity using the mo
 
 As an alternative, we cas use the model proposed by Gandhi *et al.* [-@gandhiCooperationMitigatesDiversity2019a], in which the expected among-replicate variance in the frequencies of either one of the two alleles $V_{j,t}$, for a given treatment and location combination $j$ at a given time $t$ (in generations from release), can be described as following:
 
-$$ V_{j,t} \sim Beta(\mu_{j,t}, \phi)$$
+$$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi)$$
 
-$$ \mu_{j,t} =   V_{max} \times  (1 - \exp(-\lambda_{j} \times t)) $$ 
+$$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)) $$ 
 
-where $V_{max}$ is both the maximum possible variance and the initial genetic diversity (and such, only depends on the initial allelic distribution, not on treatment), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. front) as in the "experimental" model.
+where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and such, only depends on the initial allelic distribution, not on treatment), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. front) as in the "experimental" model.
 
-We put the same priors on $log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($Normal(0, 1)$ and $halfNormal(0, 1)$, respectively) , for the same reasons. We put a stronger, informative prior on $logit(V_{max})$ :
+We put the same priors on $\log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($\mathrm{Normal}(0, 1)$ and $\mathrm{Half\mbox{-}Normal}(0, 1)$, respectively), for the same reasons. We put a stronger, informative prior on $\mathrm{logit}(V_{max})$ :
 
-$$ logit(V_{max}) \sim Normal(logit(0.25), 1.5) $$
-, as the expected asymptotic among-replicate variance (and the initial heterozygosity) is 0.25 for the case of a randomly distributed and randomly fixating locus with two alleles (the variance of a Bernoulli-distributed variable with *p*= 0.5).
+$$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 1) $$
+, as the expected asymptotic among-replicate variance is 0.25 for the case of a randomly distributed and randomly fixating locus with two alleles ($p(1-p)$ with $p$ = 0.5).
 
 ## S4.3 - Front velocity, experimental and simulated data
 
 In both experimental and simulation data, the location $X_{i,t}$ of the expansion front of the $i$th replicate after $t$ generations can be modelled as follow:
 
-$$ X_{i,t} \sim logNormal(v_{i,t} \times t, \sigma_{d}) $$
+$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(v_{i,t} \times t, \sigma_{d}) $$
 
 where $v_{i,y}$ denotes the expansion speed since release, and $\sigma{d}$ is the residual standard deviation of the log-distances.
 
-The expansion speed $v_{i,y}$ can be modelled as following: 
+The expansion speed $v_{i,y}$ can then be modelled as following:
 
-$$ v_{i,t} = v_{i,t=\infty} + (v_{i,t=1} - v_{i,t=\infty}) \times \exp(-\lambda_{treatment,i} \times (t -1)) $$
-  , that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t=\infty}$, with the rate of "decay" to the asymptic speed being $\lambda_{treatment,i}$.
+$$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1))$$
+
+, that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t \to \infty}$, with the rate of "decay" to the asymptotic speed being $\lambda_{i}$.
   
 All three parameters depend on experimental/simulation treatment, and on replicate identity, in the same way:
 
 $$
-\ln(v_{i,t=1}) = ln(v_{TREATMENT[t=1]}) + \alpha_{i}
+\ln(v_{i,t=1}) = \ln(v_{\text{TREATMENT}[i], t=1}) + \alpha_{i}
 $$
 
 $$
-\ln(v_{i,t=\infty}) = ln(v_{TREATMENT[t=\infty]}) + \gamma_{i}
+\ln(v_{i,t \to \infty}) = \ln(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i}
 $$
 
-$$ log_{10}(\lambda_{i}) = log_{10}(\lambda_{TREATMENT}) + \zeta_{i} $$
+$$
+log_{10}(\lambda_{i}) = log_{10}(\lambda_{\text{TREATMENT}[i]}) + \zeta_{i}
+$$
 
 The random effects $\alpha_{i}$, $\gamma_{i}$ and $\zeta_{i}$ are distributed as following: 
 
@@ -526,7 +489,7 @@ $$
 \gamma_{i} \\
 \zeta_{i} \\
 \end{bmatrix} \sim 
-MVNormal(
+\mathrm{MVNormal}(
 \begin{bmatrix}
 0\\
 0\\
@@ -543,7 +506,7 @@ $$
 0 & \sigma_{\gamma} & 0 \\
 0 & 0 & \sigma_{\zeta} \\
 \end{bmatrix} 
-\times \boldsymbol{R} \times
+\times \boldsymbol{\mathrm{R}} \times
 \begin{bmatrix}
 \sigma_{\alpha} & 0 & 0 \\
 0 & \sigma_{\gamma} & 0 \\
@@ -551,9 +514,9 @@ $$
 \end{bmatrix}
 $$
 
-where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{R}$ the corresponding correlation matrix.
+where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
-We used the same weakly informative priors $Normal(0,1)$ for the fixed effects parameters $v_{TREATMENT[t=1]}$, $v_{TREATMENT[t=\infty]}$ and $\lambda_{TREATMENT}$, $halfNormal(0,1)$ priors for all standard deviations $\sigma$ and again a LKJ prior $LKJcorr(2)$ for the correlation matrix $\boldsymbol{R}$
+We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathbr{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
 
 
 # S5 - main text model coefficient tables
@@ -561,52 +524,475 @@ TO DO
 
 # S6 - propagule size at front in simulations
 To understand how range expansions in simulated landscapes with reduced connectedness could be pushed (based on velocity ratios) and yet lose diversity faster than controls, we looked at the population sizes of newly established front patches, immediately after immigration and before reproduction. We focused on “control” and “restricted connectedness” treatments for simplicity, and compared the mean population size at establishment of a new front patch (corresponding to the size of the “propagule” sent from the previous front patch) as a function of treatment and equilibrium population size K, as well as their interactions. To do so, we used a negative binomial GLMM with the aforementioned variables as fixed effects and replicate identity as a random effect.
-We found that the average propagule size was lower in reduced connectedness landscapes (Supplementary Figure S6), likely explaining why genetic diversity decayed faster, as the effective population size would also be lower. However, we also noted that while average dispersal rate was reduced by half in “reduced connectedness” landscapes, propagule size was reduced by less than that (Supplementary Figure S6). This, to our opinion, solves the apparent paradox of restricted connectedness: these waves do send more individuals to the front than expected based on their base dispersal rate, explaining why they moved faster than their Fisher velocity and hence are pushed. However, at the dispersal rates we considered, this is not enough to compensate the negative effect of the lower dispersal rate itself, hence the faster decay of genetic diversity.
+We found that the average propagule size was lower in reduced connectedness landscapes (**Supplementary Figure S6.1**), likely explaining why genetic diversity decayed faster, as the effective population size would also be lower. However, we also noted that while average dispersal rate was reduced by half in “reduced connectedness” landscapes, propagule size was reduced by less than that (Supplementary Figure S6). This, to our opinion, solves the apparent paradox of restricted connectedness: these waves do send more individuals to the front than expected based on their base dispersal rate, explaining why they moved faster than their Fisher velocity and hence are pushed. However, at the dispersal rates we considered, this is not enough to compensate the negative effect of the lower dispersal rate itself, hence the faster decay of genetic diversity.
 
-Supplementary Figure S6.  Posterior distribution of the mean size Nnew of newly founded populations in simulations, estimated using a negative binomial mixed model.
+```{r importing-data}
+data <- read_csv(file=here("NetLogo_output/model-output_supplementary.csv"))
+```
 
-# S7 - new treatment in simulations DDD + reduced connectedness
-To tentatively explain why, in our experiments, pushed wave fronts created by reduced connectedness lost less genetic diversity than controls, when our first simulations indicate they should not, we ran an additional simulation scenario. In this scenario, both the base dispersal rate and the slope of the density-dispersal relationship were changed compared to the control (D0 = 0.1, βdensity = 1), leading to a reaction norm where dispersal rates are reduced by 50% at low densities, but similar to the controls at population sizes close to K (DK ≈ 0.23). We ran this scenario under the same conditions of K and number of replicates as the scenarios presented in the main text, and re-fitted the statistical models presented in the main text with it.
-We show that this new scenario leads to pushed waves, based on relative velocities (Supplementary Figure X). We also show that, contrary to the simple “reduced connectedness” scenario, it results in a slower loss genetic diversity than in controls (Supplementary Figure XX). Interestingly, compared to the simple “reduced connectedness” scenario again, this one resulted in absolute front velocities much closer to controls (Supplementary Figure X), a feature that better matches results from experimental landscapes.
-FIGURE LEGENDS TO ADD (Figures next page)
+
+```{r}
+#### for analysing size of new propagules:
+#### works only if all ticks are recorded, not one out of two
+
+tab_propa <- data %>% 
+  filter(treatment == "control" | treatment =="reduced connectedness") %>% 
+  mutate(replicateID=paste(treatment,K,seedID)) %>% 
+  group_by(treatment,replicateID,is.front,K) %>% 
+  arrange(ticks) %>% 
+  filter(N_predispersal==0 & is.front==TRUE & ticks >1) %>%  ##we only keep case where the front advanced (new pops) 
+  ###remove G1 because dispersal in only one direction so messier for comparison to deterministic
+  ungroup() %>% 
+  mutate(K=factor(K))
+
+mod_propa1=brm(bf(N_postdispersal~0+treatment:K+(1|replicateID),
+                  nlf(shape~1/invshape),
+                  invshape~1),
+               family=negbinomial(link_shape = "identity"),data=tab_propa,
+               prior=c(set_prior("normal(0,1)",class="b"),
+                       set_prior("normal(0,1)",class="sd"),
+                       set_prior("normal(0,1)",nlpar="invshape",lb=0)),chains=4,iter=100)
+
+tab_propa %>% 
+  mutate(replicateID=replicateID[1]) %>% 
+  select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA,scale="linear") %>% 
+  ggplot()+
+  #geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
+  geom_eye(aes(x=treatment,y=exp(.value)))+ 
+  scale_y_continuous("front population size at establishment (posterior mean)")+
+  scale_x_discrete("landscape type")+
+  facet_wrap(~paste ("K = ",K))+theme_bw()
+
+```
+
+**Supplementary Figure S6.1**.  Posterior distribution of the mean size Nnew of newly founded populations in simulations, estimated using a negative binomial mixed model.
+
+# S7 - Testing the effect of combining density-dependent dispersal and reduced connectedness in simulations
+
+To tentatively explain why, in our experiments, pushed wave fronts created by reduced connectedness lost less genetic diversity than controls, when our first simulations indicate they should not, we ran an additional simulation scenario. In this scenario, both the base dispersal rate and the slope of the density-dispersal relationship were changed compared to the control (*D*[0] = 0.1, *β*[density] = 1), leading to a reaction norm where dispersal rates are reduced by 50% at low densities, but similar to the controls at population sizes close to *K* (*D*[*K*] ≈ 0.23). We ran this scenario under the same conditions of *K* and number of replicates as the scenarios presented in the main text, and re-fitted the statistical models presented in the main text including it.
+We show that this new scenario leads to pushed waves, based on relative velocities (**Supplementary Figure S7.1**). We also show that, contrary to the simple “reduced connectedness” scenario, it results in a slower loss genetic diversity than in controls (**Supplementary Figure S7.2**). Interestingly, compared to the simple “reduced connectedness” scenario again, this one resulted in absolute front velocities much closer to controls (**Supplementary Figure S7.1**), a feature that matches better, albeit not completely, results from experimental landscapes.
+
+
+```{r importing-data}
+data <- read_csv(file=here("NetLogo_output/model-output.csv"))
+```
+
+```{r}
+data_genetics <- data %>% 
+  group_by(ticks,treatment,is.front,K) %>% 
+  summarise(varP1=var(P1),varP0=var(P0)) %>% 
+  mutate(K=factor(K)) ## same as main text, but we keep the supplementary treatment
+```
+
+```{r}
+data_front <- data %>% 
+  filter(is.front == TRUE) %>% 
+  mutate(front=pxcor) %>% 
+  mutate(K=factor(K)) 
+```
+
+```{r}
+if(file.exists(here("R_output","supplementary","model_S7_genetics_IBM.Rdata")))
+  {
+  load(here("R_output","supplementary","model_S7_genetics_IBM.Rdata"))
+  }else
+    {
+prior_genetics=c(
+  set_prior("normal(-1.1,1)",nlpar=c("logitVmax")), #informative prior (logit(0.25)=-1.1 (more or less))
+  set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
+  set_prior("normal(0,1)",nlpar="invphi",lb=0)
+)
+
+bf_genetics <- bf(varP1~logit(Vmax*(1-exp(-(ticks)*decay))),
+                  nlf(Vmax~inv_logit(logitVmax)),
+                  nlf(decay~10^(logdecay)),
+                  logitVmax~1,
+                  logdecay~0+treatment:is.front:K,
+                  nlf(phi~1/invphi),
+                  invphi~1,
+                  family=Beta(link_phi="identity"),nl=TRUE)
+
+mod_genetics=brm(bf_genetics,
+                 data=data_genetics,
+                 iter=2000,chains=4,
+                 prior=prior_genetics,seed=42
+)
+
+save(list="mod_genetics",file=here("R_output","supplementary","model_S7_genetics_IBM.Rdata"))
+}
+```
+
+
+```{r}
+if(file.exists(here("R_output","supplementary","modelS7_front_IBM.Rdata")))
+  {
+  load(here("R_output","supplementary","modelS7_front_IBM.Rdata"))
+  }else
+    {
+prior_front <- c(
+  #set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"),
+  set_prior("normal(0,1)",nlpar="logitspeedasym",class="b"),
+  set_prior("normal(0,1)",nlpar="lograte",class="b"),
+  set_prior("normal(0,1)",nlpar="logitspeedasym",class="sd"),
+  set_prior("normal(0,1)",nlpar="lograte",class="sd"),
+  set_prior("normal(0,1)",class="sigma"),
+  set_prior("lkj(2)",class="cor")
+)
+
+
+
+bf_front <- bf(front~log(speed*ticks),
+               nlf(speed~speedasym+(1-speedasym)*exp(-(ticks-1)*rate)), ##speedstart forced to 1
+               nlf(rate~10^(lograte)),
+               nlf(speedasym~inv_logit(logitspeedasym)),
+               #nlf(speedstart~exp(logitspeedstart)),
+               logitspeedasym~0+treatment:K+(1|1|replicateID),
+               #logitspeedstart~0+treatment+(1|1|replicateID),
+               lograte~0+treatment:K+(1|1|replicateID),
+               family=lognormal,nl=TRUE)
+
+mod_front=brm(bf_front,
+              data=subset(data_front,ticks>0),chains=4,iter=2000,
+              prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10),
+              seed=42)
+
+save(list="mod_front",file=here("R_output","supplementary","modelS7_front_IBM.Rdata"))
+}
+```
+
+
+```{r color-palettes, eval=FALSE}
+
+TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so it can also be used for simulation results
+frontcorePalette <- c("#000000", "#E69F00", "#56B4E9") # 3 colors, for origin (black), front and core patches
+
+```
+
+
+```{r}
+
+thresholds <- data_front %>% 
+  mutate(threshold_pushed=(3/(2*sqrt(2)))*velocity_fisher) %>% 
+  select(K,treatment,velocity_fisher,threshold_pushed) %>% 
+  distinct() %>% 
+  pivot_longer(cols=c(velocity_fisher,threshold_pushed),
+               values_to = "threshold_value",names_to = "threshold_type") %>% 
+  mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
+                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+
+#not shown 
+data_front%>% 
+  ungroup() %>% 
+  mutate(replicateID= unique(replicateID)[1]) %>% 
+  select(treatment,replicateID,K) %>% 
+  distinct() %>% 
+  expand_grid(ticks=(1:100)) %>% 
+  add_fitted_draws(mod_front,re_formula=NA) %>% 
+  group_by(ticks, treatment) %>% 
+  ggplot()+
+  geom_line(data=data_front,aes(x=ticks, y=front,group=replicateID),col="grey",alpha=0.2)+
+  stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.5)+
+  scale_y_continuous("Front location (patches from release)")+
+  scale_x_continuous("time (generations)")+
+  facet_grid(cols=vars(treatment),rows=vars(paste("K = ",K,sep="")),space= "free_x",scale="free_x")+
+  geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
+
+data_front %>%
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  #filter(treatment != "reduced + DDD") %>% 
+  ungroup() %>% 
+  mutate(replicateID= replicateID[1],ticks=1) %>% 
+  select(treatment,ticks,replicateID,K) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>% 
+  mutate(.value=invlogit(.value)) %>% 
+  ggplot()+
+  geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
+  stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+
+  scale_y_continuous("Asymptotic velocity (posterior)") +
+  scale_x_discrete("equilibrium population size K")+
+  scale_linetype_discrete(name="",
+                       labels=c(
+                         expression(paste(frac(3,2*sqrt(2)), "  ", italic(v[F]))),
+                         expression(italic(v[F])))
+                       )+
+  facet_grid(cols=vars(treatment))+
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")+
+  theme(legend.title=element_blank(),legend.position = c(0.86, 0.3),legend.background = element_rect(fill = "white",colour = "black"),legend.margin=margin(t=2,r=2,l=2,b=2))
+
+data_front %>% 
+  ungroup() %>% 
+  mutate(replicateID= replicateID[1],ticks=1) %>% 
+  select(treatment,ticks,replicateID,K) %>% 
+  distinct() %>%
+  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
+  mutate(.value=invlogit(.value))%>% 
+  mutate(.value=.value/velocity_fisher) %>% 
+  mean_hdi()
+```
+
+
+**Supplementary Figure S7.1** : Posterior distribution of the asymptotic front velocity ($v$) in simulations, depending on simulation scenario and equilibrium population size *K*. The horizontal lines mark the range between $ \frac{v}{v_{F}} = 1$ (i.e. pulled waves) and $ \frac{v}{v_{F}} = \frac{3}{2\sqrt2}$ (limit between semi-pushed and fully pushed waves).
+
+```{r}
+library(cowplot) ##temporary, check once plots are restyled
+## not shown in main text: 
+data_genetics %>% ungroup() %>% 
+  select(treatment,is.front,K) %>% 
+  distinct() %>% 
+  expand_grid(ticks=(1:100)) %>% 
+  add_fitted_draws(mod_genetics,re_formula = NA) %>% 
+  group_by(ticks, treatment) %>% 
+  ggplot()+
+  geom_line(data=data_genetics,aes(x=ticks, y=varP1,col=treatment))+
+  stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.25)+
+  scale_y_continuous("Variance in fraction")+
+  facet_grid(cols=vars(treatment),rows=vars(is.front,K))+
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
+
+
+
+data_genetics %>% ungroup() %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  #filter(treatment != "reduced + DDD") %>% 
+  select(treatment,is.front,K) %>% 
+  mutate(Location=factor(is.front)) %>% 
+  mutate(Location=fct_recode(Location,front="TRUE",core="FALSE")) %>% 
+  mutate(Location=fct_relevel(Location,"front","core")) %>% 
+  distinct() %>% 
+  mutate(ticks=1) %>% 
+  add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
+  mutate(.value=10^(.value)) %>% 
+  ggplot()+
+  stat_eye(aes(x=K,fill=Location,group=Location,y=.value),position="dodge",normalize="xy")+
+  facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
+  scale_y_continuous(name=expression(paste("genetic diversity decay rate  ",lambda)))+
+  scale_x_discrete("equilibrium population size K")+
+  scale_fill_manual("Location",values=c("#E69F00","#56B4E9"))+
+  #scale_colour_manual("Location",values=c("#E69F00","#56B4E9"))+
+  theme_half_open(11)+
+  background_grid(colour.major = "grey95",colour.minor = "grey95")
+
+#alternate theme, needs cowplot and ggtext to work
+#    theme_half_open(12) +
+#    background_grid() +
+#    theme(
+#        strip.background = element_blank(),
+#        strip.text = element_textbox(
+#            size = 12,
+#            color = "black", fill = "grey90", box.color = "grey",
+#            halign = 0.5, r = unit(0, "pt"), width = unit(1, "npc"),height = unit(36, "pt"),
+#            padding = margin(2, 2, 2, 2), margin = margin(3, 3, 3, 3)
+#        )
+#    )
+```
+
+**Supplementary Figure S7.2** : Posterior distribution of the decay rate of genetic with time (*λ*) in simulations, depending on simulation scenario, equilibrium population size *K* and patch location (either the original release site (core) or the most advanced patch at the time of measure (front)). Please note that posterior for core and front patches are displayed on different scales on the y-axis, for readability.
 
 # S8 - Differences in equilibrium population size between experimental treatments
 
-We used a Beta generalized linear mixed model to determine whether *Trichogramma* population sizes (estimated parasitism rates) differed between our two experimental treatments. We focused on core patches that were expected to be at equilibrium; for the purposes of this analysis, we conservatively defined “core” patches as “patches for which the distance to the release site is equal or lower than 25% of the distance release site – front patch at the time of sampling”. Our model included fixed effects of experimental treatment, as well as random effects of observation macro (to account for systematic macro bias, see **Supplementary Figure S2.1**), replicate identity, and patch identity nested in replicate to account for repeated measures within a given experimental replicate and across time.
+We used a Beta generalized linear mixed model to determine whether *Trichogramma* population sizes (computer-estimated parasitism rates) differed between our two experimental treatments. We focused on core patches that were expected to be at equilibrium; for the purposes of this analysis, we conservatively defined “core” patches as “patches for which the distance to the release site is equal or lower than 25% of the distance release site – front patch at the time of sampling”. Our model included fixed effects of experimental treatment, as well as random effects of observation macro (to account for systematic macro bias, see **Supplementary Figure S2.1**), replicate identity, and patch identity nested in replicate and generation nested in patch to account for spatially and temporally repeated measures.
 
-We found that equilibrium population sizes in the range core were higher when connectedness was restricted than in controls (121.7% on average [106.25; 137.3] of the average population size of controls, Supplementary Figure S8).
+```{r popsize}
 
-Supplementary Figure S8 Posterior mean population sizes (host parasitism rates, each population harbours ≈ 450 host eggs) as a function of landscape type.
+#### block not needed if everything in script is run (same as in S3)
+raw_dynamics<- read_csv(here("data","Trichogramma_dynamics.csv"))
+
+data_popsize_temp<- raw_dynamics %>% 
+  mutate(Mix= as.numeric(str_sub(Image,1,1)),
+         Treatment = str_sub(Image,2,3),
+         Replicate = as.numeric(str_sub(Image,4,4)),
+         Patch = as.numeric(str_sub(Image,6,7))
+  ) %>% 
+  #no further processing needed; we exploit the fact that chars 6&7 are either digit dot (patchs 0 to 9)
+#or digit-digit (patches 10 and beyond)
+## as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
+  mutate(landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% #a unique replicate ID
+  mutate(Peggs_est=P/(P+H), ## proportion of pixels counted as parasitised (estimated)
+         spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep=""), # a unique ID for each replicate x patch x generation combination
+         Mix = factor(Mix)) %>% 
+  mutate(Treatment = fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
+#### end of block
+
+
+data_popsize <- data_popsize_temp %>% 
+  group_by(Generation,landscapeID) %>% 
+  filter(Patch<= 0.25*max(Patch)) ## we only keep "core" pops
+  
+
+if(file.exists(here("R_output","supplementary","model_S8_popsize.Rdata")))
+  {
+  load(here("R_output","supplementary","model_S8_popsize.Rdata"))
+  }else
+    {
+
+mod_popsize <- brm(bf(Peggs_est~0+Treatment+(1|Macro)+(1|landscapeID/Patch/Generation), 
+        nlf(phi~1/invphi),
+        invphi~1),
+        data=data_popsize,family=Beta(link_phi="identity"),
+        iter=12000,warmup=2000,chains=4,
+        prior=c(
+          set_prior("normal(0,1.5)",class="b"),
+          set_prior("normal(0,1)",class="sd"),
+          set_prior("normal(0,1)",nlpar="invphi",lb=0)
+        ),
+        control=list(adapt_delta=0.8),seed=42)
+
+save(list="mod_popsize",file=here("R_output","supplementary","model_S8_popsize.Rdata"))
+}
+
+```
+
+We found that equilibrium population sizes in the range core were higher when connectedness was restricted than in controls, with XXXXXX hosts parasitized in the former and XXXX in the latter, corresponding to a XXXX [106.25; 137.3] increase (**Supplementary Figure S8.1**).
+
+```{r}
+newdata <- data_popsize %>% ungroup() %>% 
+  mutate(Macro=Macro[1],landscapeID=landscapeID[1],spacetimeID=spacetimeID[1]) %>%  #it's just a placeholder, we plot the posterior for the "true" (grand) mean distance, without random effects
+  select(Macro, Treatment) %>% 
+  distinct()
+
+### these averages are just indicative and for plotting purposes
+#data_popsize_avg <- data_G0 %>% 
+#  group_by(landscapeID,Treatment)%>%  
+#  summarise(distmean=mean(distmean),
+#            jitteredTRT=mean(jitteredTRT)) %>% ungroup()
+#
+## the main plot                                                           
+p1 <-newdata %>% 
+  add_fitted_draws(mod_popsize,re_formula=NA) %>% 
+  ggplot()+
+  stat_eye(aes(x=Treatment,y=.value,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
+  ## we put both observed points (by macros) and the indicative averages for each each landscape
+  #geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
+  #geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
+  #scale_fill_manual(values=TRTpalette[c(1,4)])+
+  #scale_colour_manual(values=TRTpalette[c(1,4)])+
+  scale_x_discrete("")+
+  scale_y_continuous("Mean population size in core patches (in % of total hosts)",limits=c(0,1))+
+  theme_bw()
+
+## a subplot showing the difference between treatments. Keep it or put this info in text?
+p2<- newdata %>% 
+  add_fitted_draws(mod_popsize,re_formula=NA) %>% 
+  ungroup() %>% 
+  compare_levels(variable=.value,by=Treatment) %>% 
+  ggplot()+
+  stat_eye(aes(x=Treatment,y=.value),.width=c(0.66,0.95),fill="grey",point_interval = mean_hdi)+
+  scale_x_discrete("",labels="")+
+  scale_y_continuous("Difference between treatments",
+                     limits=c(0,1)-invlogit(fixef(mod_popsize)["Treatmentcontrol","Estimate"])) + ##so the "difference" subplot is aligned with the main
+  geom_hline(yintercept=0, lty=2) +
+  theme_bw()
+
+p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
+  theme(legend.position="none")
+
+
+
+diffs<- newdata %>% 
+    add_fitted_draws(mod_popsize,re_formula=NA) %>% 
+    ungroup() %>% 
+    compare_levels(variable=.value,by=Treatment) %>% mutate(.diff=.value) %>% ungroup() %>% select(-c(.value,Treatment))
+
+newdata %>% 
+    add_fitted_draws(mod_popsize,re_formula=NA) %>% 
+    ungroup() %>% filter(Treatment=="control") %>% left_join(diffs) %>% mean_hdi(.diff/.value)
+
+```
+
+**Supplementary Figure S8.1** Left: Mean population size (estimated as host parasitism rate 7 days post-adult removal) as a function of treatment. Colored areas: posterior distribution; black dots and segment: posterior mean and 66/95% credible intervals. Right: posterior difference between the two experimental treatments.
 
 # S9 - Model descriptions for models presented in Supplementary Materials
 
-## S9.1 - validation of codicount (Supplementary Material S2)
+(As in S4, all Beta models described here use the (mean, precision) parametrisation of the Beta distribution.)
+
+## S9.1 - validation of `CODICOUNT` estimates of population sizes (Supplementary Material S2)
+
+To compare for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
+
+$$
+n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
+
+P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
+
+\mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
+\mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
+$$
+
+The patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
+
+$$
+\begin{bmatrix}
+\alpha_{i} \\
+\gamma_{i} \\
+\end{bmatrix} \sim 
+\mathrm{MVNormal}(
+\begin{bmatrix}
+0\\
+0\\
+\end{bmatrix},\boldsymbol{\Omega}) \\
+
+\boldsymbol{\Omega} = 
+\begin{bmatrix}
+\sigma_{\alpha} & 0 \\
+0 & \sigma_{\gamma} \\
+\end{bmatrix} 
+\times \boldsymbol{\mathrm{R}} \times
+\begin{bmatrix}
+\sigma_{\alpha} & 0 \\
+0 & \sigma_{\gamma} \\
+\end{bmatrix} \\
+$$
+, where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ forfixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
+
+We ran a second version of this model, to determine whether computer macros presented systematic estimation biases. In this case, the parameter $\beta_{1}$, which denotes the (logit-transformed) average parasitism rate in the "computer estimates" model, was simply changed to be macro-specific: 
+$$
+P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
+\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i}\\
+$$
+, with the remaining of the model remaining unchanged.
+
+## S9.2 -  Validation of the experimental design (Supplementary Material S3)
+
+We analysed the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as seen from macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
+
+$$ 
+\frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
+\mathrm{logit}(\mu_{i,m})= \beta_{0[\text{TREATMENT}[i]} + \beta_{1} \times N_{i,m} + \alpha_{m}\\
+\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+$$
+, where $N_{i,m}$ is the total proportion of eggs parasitised across the 5 patches of the replicate, centred and scaled to unit 1 SD. As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta_{0}$, a $\mathrm{Normal}(0,1)$ prior for $\beta_{1}$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
+
+## S9.3 - TO DO  propagule size model (Supplementary Material S6)
 
 TO DO
+$$
+N_{i,t} \sim \mathrm{NegativeBinomial}(\mu_{\text{TREATMENT}[i]}, \phi) \\
+\mu \sim \mathrm{Normal}(0,1) \\
+1/\phi\sim \mathrm{Half\mbox{-}Normal}(0,1)\\
+$$
 
-## S9.2 -  validation of reduced connectedness (Supplementary Material S3)
-
-$$ D_{[treatment,macro]} \sim logNormal(\mu, \sigma) $$
-
-$$\mu = \mu + \alpha $$
-
-or
-
-$$\mu = \mu + \beta \times fecundity + \alpha $$
-
-## S9.3 - propagule size model (Supplementary Material S6)
-
-TO DO
-
-## S9.4 - new simulation treatment (Supplementary Material S7)
+## S9.4 - Testing the effect of combining density-dependent dispersal and reduced connectedness in simulations (Supplementary Material S7)
 
 See S4.2 and S4.3
 
-## S9.5 core population size model (Supplementary Material S8)
+## S9.5 - Differences in equilibrium population size between experimental treatments (Supplementary Material S8)
 
-$$ P_{[treatment,macro,x,t]} \sim Beta(\mu_{[treatment,x,t]}, \phi) $$
+We assumed the parasitism rate $P_{i,x,t,m}$ observed by macro $m$ in patch $x$ of replicate $i$ after $t$ generations can be modelled as follow:
 
-$$ \mu_{[treatment,x,t]} = \mu_{[treatment]} +\alpha_{[i]}  +\gamma_{[i]}$$
+$$ 
+P_{i,x,t,m} \sim \mathrm{Beta}(\mu_{i,x,t,m}, \phi) \\
 
+\mu_{i,x,t,m} = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{i,x}  + \zeta_{i,x,t} + \eta_{m}\\
+
+\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+\gamma_{i,x} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
+\zeta_{i,x,t} \sim \mathrm{Normal}(0,\sigma_{\zeta}) \\
+\eta_{m} \sim \mathrm{Normal}(0,\sigma_{\eta}) \\
+$$
+, where $\alpha$ denote random effects of replicate, $\gamma$ of patch nested in replicate, $\epsilon$ of time nested in patch and replicate, and $\zeta$ random effects accounting for systematic between macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 # References

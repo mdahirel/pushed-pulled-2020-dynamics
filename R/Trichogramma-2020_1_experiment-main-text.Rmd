@@ -260,7 +260,12 @@ We here assume each front initially advances at a speed that may not be the asym
 
 ```{r model-front, eval = FALSE}
 
-bf_front <- bf(front~log(speed*Generation), 
+if(file.exists(here("R_output","model1_front_expe.Rdata")))
+  {
+  load(here("R_output","model1_front_expe.Rdata"))
+  }else
+    {
+  bf_front <- bf(front~log(speed*Generation), 
                nlf(speed~speedasym+(speedstart-speedasym)*exp(-(Generation-1)*rate)),
                ##Generation - 1 because moving the startspeed away from t0 (where it doesn't actually exist) to t1 stabilises everything
                nlf(rate~10^(lograte)),
@@ -284,6 +289,8 @@ mod_front=brm(bf_front,
         prior= prior_front,control=list(adapt_delta=0.95,max_treedepth=10),
         seed = 42)
 
+save(list="mod_front", file=here("R_output","model1_front_expe.Rdata"))
+}
 
 ```
 
@@ -316,7 +323,11 @@ ppc_ribbon(yrep=predict(mod_front,summary=FALSE),
 Our model here is rooted in theory (see manuscript for references) and assumes genetic diversity declines exponentially through time. The decay rate parameter is our parameter of interest here:
 
 ```{r model-genetics, eval = FALSE}
-
+if(file.exists(here("R_output","model2_genet_expe.Rdata")))
+  {
+  load(here("R_output","model2_genet_expe.Rdata"))
+  }else
+    {
 
 prior_genetics=c(
   set_prior("normal(0,1.5)",nlpar=c("logitH0"),class="b"),
@@ -343,6 +354,9 @@ mod_genetics=brm(bf_genetics,
 
 #the gamma(2, 0.1) prior for nu follows again recommendations from the Stan wiki
 #https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations
+
+save(list="mod_genetics",file=here("R_output","model2_genet_expe.Rdata"))
+}
 ```
 
 ```{r summary-model-genetics, eval = FALSE}
@@ -370,6 +384,11 @@ ppc_ribbon(yrep=invlogit(predict(mod_genetics,summary=FALSE)),
 Well, we did both, and the former outperforms the others, maybe because it accounts better for rare outliers (like sudden **increases** in diversity with time) that are visible on plots (which would be expected due to sampling when selecting individuals before genotyping, or due to the expansion process itself):
 
 ```{r model-genetics-beta, eval = FALSE}
+if(file.exists(here("R_output","model2bis_genet_expe.Rdata")))
+  {
+  load(here("R_output","model2bis_genet_expe.Rdata"))
+  }else
+    {
 bf_genetics2=bf(Hexp~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~10^(logdecay)),
@@ -387,6 +406,8 @@ mod_genetics2=brm(bf_genetics2,
                  seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
 )
 
+save(list="mod_genetics2",file=here("R_output","model2bis_genet_expe.Rdata"))
+}
 ##can't compare both models directly with LOO since the responses are not the same, logit(Hexp) versus Hexp
 ## but let's check their performance:
 
@@ -404,6 +425,11 @@ While we can't directly compare the Student on logits and the Beta models with L
 
 
 ```{r model-genetics-logit-normal, eval = FALSE}
+if(file.exists(here("R_output","model2ter_genet_expe.Rdata")))
+  {
+  load(here("R_output","model2ter_genet_expe.Rdata"))
+  }else
+    {
 bf_genetics3=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~10^(logdecay)),
@@ -418,6 +444,10 @@ mod_genetics3=brm(bf_genetics3,
                          set_prior("normal(0,1)",class="sigma")),
                  seed=42,control=list(adapt_delta=0.8,max_treedepth=10)
 )
+
+save(list="mod_genetics3",file=here("R_output","model2ter_genet_expe.Rdata"))
+     
+}
 
 ##looking at 
 ## summary(mod_genetics)
@@ -434,9 +464,18 @@ pp_check(mod_genetics3,type="loo_pit_overlay",nsamples=2000)
 ## the LOO PIT graphs too
 ##, so now let's compare logit student and logit normal:
 
-loo1<-loo(mod_genetics)
+
+if(file.exists(here("R_output","loo_genet_expe.Rdata")))
+  {
+  load(here("R_output","loo_genet_expe.Rdata"))
+  }else
+    {
+loo1<-loo(mod_genetics,reloo=TRUE)
 
 loo3<-loo(mod_genetics3, reloo=TRUE)  ##reloo = TRUE needed because some "problematic" obs with high pareto_k
+
+save(list=c("loo1","loo3"),file=here("R_output","loo_genet_expe.Rdata"))
+}
 
 loo_compare(loo1,loo3)
 

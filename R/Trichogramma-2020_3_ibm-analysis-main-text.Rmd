@@ -63,7 +63,9 @@ data <- read_csv(file=here("NetLogo_output/model-output.csv"))
 data_genetics <- data %>% 
   group_by(ticks,treatment,is.front,K) %>% 
   summarise(varP1=var(P1),varP0=var(P0)) %>% 
-  mutate(K=factor(K))
+  mutate(K=factor(K)) %>% 
+  filter(treatment!="reduced + DDD") ##supplementary material-only treatment, simulated at same time as others for convenience
+# remove from main analysis
 
 #ggplot(data_genetics)+
 #  geom_line(aes(x=ticks,y=varP1,col=treatment))+
@@ -76,7 +78,8 @@ data_genetics <- data %>%
 data_front <- data %>% 
   filter(is.front == TRUE) %>% 
   mutate(front=pxcor) %>% 
-  mutate(K=factor(K))
+  mutate(K=factor(K)) %>% 
+  filter(treatment!="reduced + DDD")
 
 #ggplot(data_front)+
 #  geom_line(aes(x=ticks,y=front,group=replicateID))+
@@ -90,14 +93,19 @@ data_front <- data %>%
 ## genetics
 
 ```{r}
+if(file.exists(here("R_output","model3_genetics_IBM.Rdata")))
+  {
+  load(here("R_output","model3_genetics_IBM.Rdata"))
+  }else
+    {
 prior_genetics=c(
-  set_prior("normal(0.25,1.5)",nlpar=c("logitVmax")), #informative prior
+  set_prior("normal(-1.1,1)",nlpar=c("logitVmax")), #informative prior (logit(0.25)=-1.1 (more or less))
   set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
   set_prior("normal(0,1)",nlpar="invphi",lb=0)
 )
 
 bf_genetics <- bf(varP1~logit(Vmax*(1-exp(-(ticks)*decay))),
-                  nlf(Vmax~inv_logit(logitHasym)),
+                  nlf(Vmax~inv_logit(logitVmax)),
                   nlf(decay~10^(logdecay)),
                   logitVmax~1,
                   logdecay~0+treatment:is.front:K,
@@ -108,12 +116,20 @@ bf_genetics <- bf(varP1~logit(Vmax*(1-exp(-(ticks)*decay))),
 mod_genetics=brm(bf_genetics,
                  data=data_genetics,
                  iter=2000,chains=4,
-                 prior=prior_genetics
+                 prior=prior_genetics,seed=42
 )
+
+save(list="mod_genetics",file=here("R_output","model3_genetics_IBM.Rdata"))
+}
 ```
 
 
 ```{r}
+if(file.exists(here("R_output","model4_front_IBM.Rdata")))
+  {
+  load(here("R_output","model4_front_IBM.Rdata"))
+  }else
+    {
 prior_front <- c(
   #set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"),
   set_prior("normal(0,1)",nlpar="logitspeedasym",class="b"),
@@ -131,14 +147,18 @@ bf_front <- bf(front~log(speed*ticks),
                nlf(rate~10^(lograte)),
                nlf(speedasym~inv_logit(logitspeedasym)),
                #nlf(speedstart~exp(logitspeedstart)),
-               logitspeedasym~0+treatment:factor(K)+(1|1|replicateID),
+               logitspeedasym~0+treatment:K+(1|1|replicateID),
                #logitspeedstart~0+treatment+(1|1|replicateID),
-               lograte~0+treatment:factor(K)+(1|1|replicateID),
+               lograte~0+treatment:K+(1|1|replicateID),
                family=lognormal,nl=TRUE)
 
 mod_front=brm(bf_front,
-              data=subset(data_front,ticks>0),chains=4,iter=200,
-              prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10))
+              data=subset(data_front,ticks>0),chains=4,iter=12000,warmup=2000,
+              prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10),
+              seed=42)
+
+save(list="mod_front",file=here("R_output","model4_front_IBM.Rdata"))
+}
 ```
 
 
