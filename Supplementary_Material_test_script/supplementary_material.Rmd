@@ -41,6 +41,8 @@ library(bayesplot)
 
 ```
 
+<br/>
+<br/>
 **Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, is available on GitHub (LINK TO ADD) and Zenodo (DOI TO ADD).
 
 # S1 - Creation of genetic lines
@@ -100,7 +102,7 @@ data_genetics %>%
 
 # S2 - Validating computer estimates of *Trichogramma* population sizes
 
-For analyses asking for population sizes (Supplementary Material 3 and 8), the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of parasitism rate/ population size.
+For analyses asking for population sizes (Supplementary Material 3 and 8), the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each potentially having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of parasitism rate/ population size.
 
 To assess the validity of these automated counts, we manually counted parasitized egg plates from 197 patches (out of 2725 photographed for the experiment) roughly spanning the full range of possible population sizes (human count range: 17 to 443; number of hosts per population ≈ 450). 
 
@@ -193,7 +195,7 @@ diff_obs_est<-preds %>%
 
 We then used a bivariate generalized linear mixed model approach to compare computer estimates and human counts, with a Beta family used for the former and a binomial distribution for the latter. Both models contained a fixed-effect intercept as well as random intercepts of population/patch identity, which were correlated. This approach accounts for the data structure and the fact both human- and computer-derived counts are likely estimated with error [@perezMethodeAnalyseImage2017]. It allows us to estimate the correlation between human counts and “consensus” computer counts obtained from pooling information from all macros. Estimated and human-observed parasitism rates were highly correlated both on the latent logit scale (*r*= `r round(cor_latent$.value,2)` [`r round(cor_latent$.lower,2)`; `r round(cor_latent$.upper,2)`]) and on the observed scale (*r* = `r round(cor_obs$.value,2)` [`r round(cor_obs$.lower,2)`; `r round(cor_obs$.upper,2)`]). There was also no evidence of bias (predicted difference between average "human" and "computer" parasitism rates, in % of hosts per patch = `r round(diff_obs_est$diff,2)`% [`r round(diff_obs_est$.lower,2)`; `r round(diff_obs_est$.upper,2)`])
 
-We then refitted this model, this time adding a fixed effect of the macro in the "computer estimates" submodel, to determine whether macros presented systematic biases. We found that the overall absence of bias of the "consensus" estimates (see above) actually resulted from most macros slightly underpredicting human-observed parasitism rates while one consistently overpredicted them (**Supplementary Figure S2.1**).
+We then refitted this model, this time adding a fixed effect of the macro in the "computer estimates" submodel, to determine whether macros presented systematic biases. We found that the overall absence of bias of the "consensus" estimates (see above) actually resulted from the majority of macros slightly underpredicting human-observed parasitism rates while one consistently overpredicted them (**Supplementary Figure S2.1**).
 
 ```{r model-validate2}
 if(file.exists(here("R_output","supplementary","model_S2_computercountsbymacro.Rdata")))
@@ -223,7 +225,7 @@ mod_validate2=brm(
     chains=4,iter=22000,warmup=2000,prior=prior_validate,seed=42
 )
 
-save(list="mod_validate2",file=here("R_output","supplementary","model_S2_computercounts.Rdata"))
+save(list="mod_validate2",file=here("R_output","supplementary","model_S2_computercountsbymacro.Rdata"))
     }
 
 obs<- data_validate %>% ungroup() %>% 
@@ -250,7 +252,7 @@ data_validate %>% ungroup() %>%
 # S3 – Validation of the experimental design
 
 To determine whether our experimental reduction of connectedness did limit individual movement (i.e. functional connectivity), we used data from the first generation of testing, i.e. the only time the patch of origin of all parents can be known with certainty. We used parasitism rates to calculate for each landscape × macro the average egg location (in patches from release) and used it as a proxy of dispersal. We analysed this distance using a Beta generalised linear mixed model (dividing it by 4, the maximal possible distance, to ensure it stayed between 0 and 1). The model included a fixed effect of treatment, as well as a random effect of macro (intercept) to account for uncertainty in our estimates of parasitism and distances, more specifically for macro-level systematic biases. We additionally controlled for the total number of eggs laid in a landscape. Indeed, we expect eggs are more likely to have been laid farther in more fecund replicates, simply because the room in nearer patches is limited, rather than because of differences in connectedness. We summed patch-level parasitism rates for each landscape to obtain a measure of the total number of eggs, and included it (centred and scaled to unit SD) as a fixed effect in the model described above.
-We found that released wasps did lay their eggs closer from release sites in landscapes with restricted connectedness compared to controls (**Supplementary Figure S3.1**). In addition, we confirmed higher fecundity led to higher egg-laying distances (see model summary in attached code).
+We found that released wasps did lay their eggs closer from release sites in landscapes with restricted connectedness compared to controls (**Supplementary Figure S3.1**). In addition, we confirmed higher fecundity led to higher egg-laying distances (see model summary in linked code).
 
 ```{r data-G0}
 raw_dynamics<- read_csv(here("data","Trichogramma_dynamics.csv"))
@@ -397,7 +399,7 @@ $$
 $$
 (with $\mathrm{logit}$ and $\log_{10}$ transformations here to ensure both parameters stay within bounds). 
 
-Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "front" do not really exist). In addition, both the average decline rate and the front-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
+Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "front" are not distinct). In addition, both the average decline rate and the front-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
 
 The random effects are distributed as following: 
 
@@ -432,21 +434,21 @@ $$
 $$
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
-We used weakly informative priors mostly following McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. For the fixed intercept of the initial diversity $\beta_{0}$, which corresponds to the logit of a proportion, we used a $\mathrm{Normal}(0,1.5)$, which gives a relatively flat prior when converted back to proportions. For all other fixed effects parameters $\beta_{j|j > 0}$, we used a $\mathrm{Normal}(0, 1)$ prior (note that results are overall insensitive to fixing both standard deviations to 1 or to 1.5). All standard deviation parameters $\sigma$ (including the distributional standard deviation $\sigma_{d}$) were attributed the same $\mathrm{Half\mbox{-}Normal}(0,1)$ prior. For the random effect correlation matrix $\boldsymbol{\mathrm{R}}$ we used a LKJ $\mathrm{LKJCorr}(2)$ prior mildly skeptical of high correlations, while we used a $\mathrm{Gamma}(2,0.1)$ for the degrees of freedom $\nu$, based on Stan developers recommendations (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations).
+We used weakly informative priors mostly following McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. For the fixed intercept of the initial diversity $\beta_{0}$, which corresponds to the logit of a proportion, we used a $\mathrm{Normal}(0,1.5)$, which gives a relatively flat prior when converted back to proportions. For all other fixed effects parameters $\beta_{j|j > 0}$, we used a $\mathrm{Normal}(0, 1)$ prior (note that results are overall insensitive to fixing both standard deviations to 1 or to 1.5). All standard deviation parameters $\sigma$ (including the distributional standard deviation $\sigma_{d}$) were attributed the same $\mathrm{Half\mbox{-}Normal}(0,1)$ prior. For the random effect correlation matrix $\boldsymbol{\mathrm{R}}$ we used a $\mathrm{LKJCorr}(2)$ prior, while we used a $\mathrm{Gamma}(2,0.1)$ for the degrees of freedom $\nu$, based on Stan developers recommendations (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations).
 
-An alternative model can be written, where $H_{x,i,t} \sim \mathrm{Beta}(\mu_{x,i,t}, \phi)$, but it has a lower predictive performance (see Methods in the main text, and associated supplementary data and code). Following recommendations for weakly informative priors (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations), we use there a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior on the inverse of the precision parameter $\phi$ (all other parameters and priors are as described above).
+An alternative model can be written, where $H_{x,i,t} \sim \mathrm{Beta}(\mu_{x,i,t}, \phi)$, but it has a lower predictive performance (see Methods in the main text, and details in linked code). Following recommendations for weakly informative priors (https://github.com/stan-dev/stan/wiki/Prior-Choice-Recommendations), we use there a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior on $1/\phi$ (all other parameters and priors are as described above).
 
-### S4.2 - Genetic diversity, simulated data
+## S4.2 - Genetic diversity, simulated data
 
 In our simulations, it is not possible to analyse genetic diversity using the model(s) described above, in large part because simulated diversity data contain many zeroes, which mean models using either logit transformations or Beta distributions are inappropriate.
 
-As an alternative, we cas use the model proposed by Gandhi *et al.* [-@gandhiCooperationMitigatesDiversity2019a], in which the expected among-replicate variance in the frequencies of either one of the two alleles $V_{j,t}$, for a given treatment and location combination $j$ at a given time $t$ (in generations from release), can be described as following:
+As an alternative, we can use the model proposed by Gandhi *et al.* [-@gandhiCooperationMitigatesDiversity2019a] in which, for a given treatment and location combination $j$ at a given time $t$ (in generations from release), the expected among-replicate variance in the frequencies of either one of the two alleles $V_{j,t}$ can be described this way:
 
 $$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi)$$
 
 $$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)) $$ 
 
-where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and such, only depends on the initial allelic distribution, not on treatment), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. front) as in the "experimental" model.
+where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and so only depends on the initial allelic distribution, not on treatment or patch type), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. front) as in the "experimental" model.
 
 We put the same priors on $\log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($\mathrm{Normal}(0, 1)$ and $\mathrm{Half\mbox{-}Normal}(0, 1)$, respectively), for the same reasons. We put a stronger, informative prior on $\mathrm{logit}(V_{max})$ :
 
@@ -457,7 +459,7 @@ $$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 1) $$
 
 In both experimental and simulation data, the location $X_{i,t}$ of the expansion front of the $i$th replicate after $t$ generations can be modelled as follow:
 
-$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(v_{i,t} \times t, \sigma_{d}) $$
+$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\ln (v_{i,t} \times t), \sigma_{d}) $$
 
 where $v_{i,y}$ denotes the expansion speed since release, and $\sigma{d}$ is the residual standard deviation of the log-distances.
 
@@ -516,17 +518,83 @@ $$
 
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
-We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathbr{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
+We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathrm{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
 
 
-# S5 - main text model coefficient tables
-TO DO
+# S5 - Summary tables for main text models
+
+We here present posterior means and 95% credible intervals for the fixed effect parameters of the models discussed in the main text. For conciseness, we focus on fixed effect parameters as they are the ones that interest us in the present study; the interested reader can get the same information for random effect and distributional parameters by running the linked code, which contains various summary calls. Parameter names are as in **Supplementary Material S4**.
+
+## Expansion velocity
+
+**Table S5.1** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *simulated* range expansions
+
+```{r results= 'asis'}
+
+library(knitr)
+load(here("R_output","model4_front_IBM.Rdata"))
+  
+mod_front %>%
+  posterior_samples() %>%
+  select(starts_with("b_")) %>%
+  pivot_longer(everything()) %>%
+  group_by(name) %>%
+  mean_hdi() %>%
+  mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"control"),"standard", name)) %>%
+  mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
+  mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
+  mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
+  mutate(K=ifelse(str_detect(name,"225"),225,450)) %>%
+  mutate(parameter=str_split_fixed(name,"_",3)[,2]) %>% 
+  select(parameter,K,treatment,entry) %>% 
+  pivot_wider(names_from=treatment,values_from = entry) %>% 
+  arrange(parameter=="logitspeedasym") %>% 
+  mutate(name=c(rep("$\\log_{10}(\\lambda)$",2),rep("$\\mathrm{logit}(v_{t \\to \\infty})$",2))) %>% 
+  mutate(name=paste(name,", $K$","=",K,sep="")) %>% 
+  #select(parameter,name,K,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
+  select(name,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
+  column_to_rownames(var="name") %>% 
+  kable()
+```
+
+**Table S5.2** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *experimental* range expansions
+
+```{r results= 'asis'}
+
+library(knitr)
+
+load(here("R_output","model1_front_expe.Rdata"))
+  
+mod_front %>%
+  posterior_samples() %>%
+  select(starts_with("b_")) %>%
+  pivot_longer(everything()) %>%
+  group_by(name) %>%
+  mean_hdi() %>% 
+  mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"control"),"standard", "restricted connectedness")) %>% 
+  mutate(parameter=str_split_fixed(name,"_",3)[,2]) %>% 
+  select(parameter,treatment,entry) %>% 
+  pivot_wider(names_from=treatment,values_from = entry) %>% 
+  mutate(name=c("$\\log_{10}(\\lambda)$","$\\ln(v_{t \\to \\infty})$","$\\ln(v_{t = 1})$")) %>% 
+  #select(parameter,name,standard,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
+  select(name,standard,`restricted connectedness`) %>% #keep this select() for the true final version
+  column_to_rownames(var="name") %>% 
+  kable()
+```
+
+## Genetic diversity
+
+**Table S5.3**
+
+**Table S5.4** 
 
 # S6 - propagule size at front in simulations
 To understand how range expansions in simulated landscapes with reduced connectedness could be pushed (based on velocity ratios) and yet lose diversity faster than controls, we looked at the population sizes of newly established front patches, immediately after immigration and before reproduction. We focused on “control” and “restricted connectedness” treatments for simplicity, and compared the mean population size at establishment of a new front patch (corresponding to the size of the “propagule” sent from the previous front patch) as a function of treatment and equilibrium population size K, as well as their interactions. To do so, we used a negative binomial GLMM with the aforementioned variables as fixed effects and replicate identity as a random effect.
 We found that the average propagule size was lower in reduced connectedness landscapes (**Supplementary Figure S6.1**), likely explaining why genetic diversity decayed faster, as the effective population size would also be lower. However, we also noted that while average dispersal rate was reduced by half in “reduced connectedness” landscapes, propagule size was reduced by less than that (Supplementary Figure S6). This, to our opinion, solves the apparent paradox of restricted connectedness: these waves do send more individuals to the front than expected based on their base dispersal rate, explaining why they moved faster than their Fisher velocity and hence are pushed. However, at the dispersal rates we considered, this is not enough to compensate the negative effect of the lower dispersal rate itself, hence the faster decay of genetic diversity.
 
-```{r importing-data}
+```{r importing-suppl-data}
 data <- read_csv(file=here("NetLogo_output/model-output_supplementary.csv"))
 ```
 
@@ -534,34 +602,34 @@ data <- read_csv(file=here("NetLogo_output/model-output_supplementary.csv"))
 ```{r}
 #### for analysing size of new propagules:
 #### works only if all ticks are recorded, not one out of two
-
-tab_propa <- data %>% 
-  filter(treatment == "control" | treatment =="reduced connectedness") %>% 
-  mutate(replicateID=paste(treatment,K,seedID)) %>% 
-  group_by(treatment,replicateID,is.front,K) %>% 
-  arrange(ticks) %>% 
-  filter(N_predispersal==0 & is.front==TRUE & ticks >1) %>%  ##we only keep case where the front advanced (new pops) 
-  ###remove G1 because dispersal in only one direction so messier for comparison to deterministic
-  ungroup() %>% 
-  mutate(K=factor(K))
-
-mod_propa1=brm(bf(N_postdispersal~0+treatment:K+(1|replicateID),
-                  nlf(shape~1/invshape),
-                  invshape~1),
-               family=negbinomial(link_shape = "identity"),data=tab_propa,
-               prior=c(set_prior("normal(0,1)",class="b"),
-                       set_prior("normal(0,1)",class="sd"),
-                       set_prior("normal(0,1)",nlpar="invshape",lb=0)),chains=4,iter=100)
-
-tab_propa %>% 
-  mutate(replicateID=replicateID[1]) %>% 
-  select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA,scale="linear") %>% 
-  ggplot()+
-  #geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
-  geom_eye(aes(x=treatment,y=exp(.value)))+ 
-  scale_y_continuous("front population size at establishment (posterior mean)")+
-  scale_x_discrete("landscape type")+
-  facet_wrap(~paste ("K = ",K))+theme_bw()
+# 
+# tab_propa <- data %>% 
+#   filter(treatment == "control" | treatment =="reduced connectedness") %>% 
+#   mutate(replicateID=paste(treatment,K,seedID)) %>% 
+#   group_by(treatment,replicateID,is.front,K) %>% 
+#   arrange(ticks) %>% 
+#   filter(N_predispersal==0 & is.front==TRUE & ticks >1) %>%  ##we only keep case where the front advanced (new pops) 
+#   ###remove G1 because dispersal in only one direction so messier for comparison to deterministic
+#   ungroup() %>% 
+#   mutate(K=factor(K))
+# 
+# mod_propa1=brm(bf(N_postdispersal~0+treatment:K+(1|replicateID),
+#                   nlf(shape~1/invshape),
+#                   invshape~1),
+#                family=negbinomial(link_shape = "identity"),data=tab_propa,
+#                prior=c(set_prior("normal(0,1)",class="b"),
+#                        set_prior("normal(0,1)",class="sd"),
+#                        set_prior("normal(0,1)",nlpar="invshape",lb=0)),chains=4,iter=100)
+# 
+# tab_propa %>% 
+#   mutate(replicateID=replicateID[1]) %>% 
+#   select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA,scale="linear") %>% 
+#   ggplot()+
+#   #geom_boxplot(data=tab_propa,aes(x=treatment,y=ratio),alpha=0.1)+
+#   geom_eye(aes(x=treatment,y=exp(.value)))+ 
+#   scale_y_continuous("front population size at establishment (posterior mean)")+
+#   scale_x_discrete("landscape type")+
+#   facet_wrap(~paste ("K = ",K))+theme_bw()
 
 ```
 
@@ -569,8 +637,8 @@ tab_propa %>%
 
 # S7 - Testing the effect of combining density-dependent dispersal and reduced connectedness in simulations
 
-To tentatively explain why, in our experiments, pushed wave fronts created by reduced connectedness lost less genetic diversity than controls, when our first simulations indicate they should not, we ran an additional simulation scenario. In this scenario, both the base dispersal rate and the slope of the density-dispersal relationship were changed compared to the control (*D*[0] = 0.1, *β*[density] = 1), leading to a reaction norm where dispersal rates are reduced by 50% at low densities, but similar to the controls at population sizes close to *K* (*D*[*K*] ≈ 0.23). We ran this scenario under the same conditions of *K* and number of replicates as the scenarios presented in the main text, and re-fitted the statistical models presented in the main text including it.
-We show that this new scenario leads to pushed waves, based on relative velocities (**Supplementary Figure S7.1**). We also show that, contrary to the simple “reduced connectedness” scenario, it results in a slower loss genetic diversity than in controls (**Supplementary Figure S7.2**). Interestingly, compared to the simple “reduced connectedness” scenario again, this one resulted in absolute front velocities much closer to controls (**Supplementary Figure S7.1**), a feature that matches better, albeit not completely, results from experimental landscapes.
+To tentatively explain why, in our experiments, pushed wave fronts created by reduced connectedness lost less genetic diversity than controls, when our first simulations indicate they should not, we ran an additional simulation scenario. In this scenario, both the base dispersal rate and the slope of the density-dispersal relationship were changed compared to the control ($D_{0}=0.1$, $\beta_{density}=1$), leading to a reaction norm where dispersal rates are reduced by 50% at low densities, but similar to the controls at population sizes close to $K$ ($D_{K} \approx 0.23$). We ran this scenario under the same conditions of $K$ and number of replicates as the scenarios presented in the main text, and re-fitted the statistical models presented in the main text including it.
+We show that this new scenario leads to pushed waves, based on relative velocities (**Supplementary Figure S7.1**). We also show that, contrary to the simple “reduced connectedness” scenario, it results in a slower loss genetic diversity than in controls (**Supplementary Figure S7.2**). Interestingly, compared to the simple “reduced connectedness” scenario again, this one resulted in absolute front velocities much closer to controls (**Supplementary Figure S7.1**), a feature that is closer to matching results from experimental landscapes.
 
 
 ```{r importing-data}
@@ -624,40 +692,40 @@ save(list="mod_genetics",file=here("R_output","supplementary","model_S7_genetics
 
 
 ```{r}
-if(file.exists(here("R_output","supplementary","modelS7_front_IBM.Rdata")))
-  {
-  load(here("R_output","supplementary","modelS7_front_IBM.Rdata"))
-  }else
-    {
-prior_front <- c(
-  #set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"),
-  set_prior("normal(0,1)",nlpar="logitspeedasym",class="b"),
-  set_prior("normal(0,1)",nlpar="lograte",class="b"),
-  set_prior("normal(0,1)",nlpar="logitspeedasym",class="sd"),
-  set_prior("normal(0,1)",nlpar="lograte",class="sd"),
-  set_prior("normal(0,1)",class="sigma"),
-  set_prior("lkj(2)",class="cor")
-)
-
-
-
-bf_front <- bf(front~log(speed*ticks),
-               nlf(speed~speedasym+(1-speedasym)*exp(-(ticks-1)*rate)), ##speedstart forced to 1
-               nlf(rate~10^(lograte)),
-               nlf(speedasym~inv_logit(logitspeedasym)),
-               #nlf(speedstart~exp(logitspeedstart)),
-               logitspeedasym~0+treatment:K+(1|1|replicateID),
-               #logitspeedstart~0+treatment+(1|1|replicateID),
-               lograte~0+treatment:K+(1|1|replicateID),
-               family=lognormal,nl=TRUE)
-
-mod_front=brm(bf_front,
-              data=subset(data_front,ticks>0),chains=4,iter=2000,
-              prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10),
-              seed=42)
-
-save(list="mod_front",file=here("R_output","supplementary","modelS7_front_IBM.Rdata"))
-}
+# if(file.exists(here("R_output","supplementary","modelS7_front_IBM.Rdata")))
+#   {
+#   load(here("R_output","supplementary","modelS7_front_IBM.Rdata"))
+#   }else
+#     {
+# prior_front <- c(
+#   #set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"),
+#   set_prior("normal(0,1)",nlpar="logitspeedasym",class="b"),
+#   set_prior("normal(0,1)",nlpar="lograte",class="b"),
+#   set_prior("normal(0,1)",nlpar="logitspeedasym",class="sd"),
+#   set_prior("normal(0,1)",nlpar="lograte",class="sd"),
+#   set_prior("normal(0,1)",class="sigma"),
+#   set_prior("lkj(2)",class="cor")
+# )
+# 
+# 
+# 
+# bf_front <- bf(front~log(speed*ticks),
+#                nlf(speed~speedasym+(1-speedasym)*exp(-(ticks-1)*rate)), ##speedstart forced to 1
+#                nlf(rate~10^(lograte)),
+#                nlf(speedasym~inv_logit(logitspeedasym)),
+#                #nlf(speedstart~exp(logitspeedstart)),
+#                logitspeedasym~0+treatment:K+(1|1|replicateID),
+#                #logitspeedstart~0+treatment+(1|1|replicateID),
+#                lograte~0+treatment:K+(1|1|replicateID),
+#                family=lognormal,nl=TRUE)
+# 
+# mod_front=brm(bf_front,
+#               data=subset(data_front,ticks>0),chains=4,iter=2000,
+#               prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10),
+#               seed=42)
+# 
+# save(list="mod_front",file=here("R_output","supplementary","modelS7_front_IBM.Rdata"))
+# }
 ```
 
 
@@ -670,71 +738,71 @@ frontcorePalette <- c("#000000", "#E69F00", "#56B4E9") # 3 colors, for origin (b
 
 
 ```{r}
-
-thresholds <- data_front %>% 
-  mutate(threshold_pushed=(3/(2*sqrt(2)))*velocity_fisher) %>% 
-  select(K,treatment,velocity_fisher,threshold_pushed) %>% 
-  distinct() %>% 
-  pivot_longer(cols=c(velocity_fisher,threshold_pushed),
-               values_to = "threshold_value",names_to = "threshold_type") %>% 
-  mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
-                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
-
-#not shown 
-data_front%>% 
-  ungroup() %>% 
-  mutate(replicateID= unique(replicateID)[1]) %>% 
-  select(treatment,replicateID,K) %>% 
-  distinct() %>% 
-  expand_grid(ticks=(1:100)) %>% 
-  add_fitted_draws(mod_front,re_formula=NA) %>% 
-  group_by(ticks, treatment) %>% 
-  ggplot()+
-  geom_line(data=data_front,aes(x=ticks, y=front,group=replicateID),col="grey",alpha=0.2)+
-  stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.5)+
-  scale_y_continuous("Front location (patches from release)")+
-  scale_x_continuous("time (generations)")+
-  facet_grid(cols=vars(treatment),rows=vars(paste("K = ",K,sep="")),space= "free_x",scale="free_x")+
-  geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
-
-data_front %>%
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
-  #filter(treatment != "reduced + DDD") %>% 
-  ungroup() %>% 
-  mutate(replicateID= replicateID[1],ticks=1) %>% 
-  select(treatment,ticks,replicateID,K) %>% 
-  distinct() %>%
-  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>% 
-  mutate(.value=invlogit(.value)) %>% 
-  ggplot()+
-  geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
-  stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+
-  scale_y_continuous("Asymptotic velocity (posterior)") +
-  scale_x_discrete("equilibrium population size K")+
-  scale_linetype_discrete(name="",
-                       labels=c(
-                         expression(paste(frac(3,2*sqrt(2)), "  ", italic(v[F]))),
-                         expression(italic(v[F])))
-                       )+
-  facet_grid(cols=vars(treatment))+
-  theme_half_open(11)+
-  background_grid(colour.major = "grey95",colour.minor = "grey95")+
-  theme(legend.title=element_blank(),legend.position = c(0.86, 0.3),legend.background = element_rect(fill = "white",colour = "black"),legend.margin=margin(t=2,r=2,l=2,b=2))
-
-data_front %>% 
-  ungroup() %>% 
-  mutate(replicateID= replicateID[1],ticks=1) %>% 
-  select(treatment,ticks,replicateID,K) %>% 
-  distinct() %>%
-  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
-  mutate(.value=invlogit(.value))%>% 
-  mutate(.value=.value/velocity_fisher) %>% 
-  mean_hdi()
+# 
+# thresholds <- data_front %>% 
+#   mutate(threshold_pushed=(3/(2*sqrt(2)))*velocity_fisher) %>% 
+#   select(K,treatment,velocity_fisher,threshold_pushed) %>% 
+#   distinct() %>% 
+#   pivot_longer(cols=c(velocity_fisher,threshold_pushed),
+#                values_to = "threshold_value",names_to = "threshold_type") %>% 
+#   mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
+#                                    `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
+#   mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+# 
+# #not shown 
+# data_front%>% 
+#   ungroup() %>% 
+#   mutate(replicateID= unique(replicateID)[1]) %>% 
+#   select(treatment,replicateID,K) %>% 
+#   distinct() %>% 
+#   expand_grid(ticks=(1:100)) %>% 
+#   add_fitted_draws(mod_front,re_formula=NA) %>% 
+#   group_by(ticks, treatment) %>% 
+#   ggplot()+
+#   geom_line(data=data_front,aes(x=ticks, y=front,group=replicateID),col="grey",alpha=0.2)+
+#   stat_lineribbon(aes(x=ticks,y=.value),.width=0.95,alpha=0.5)+
+#   scale_y_continuous("Front location (patches from release)")+
+#   scale_x_continuous("time (generations)")+
+#   facet_grid(cols=vars(treatment),rows=vars(paste("K = ",K,sep="")),space= "free_x",scale="free_x")+
+#   geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
+# 
+# data_front %>%
+#   mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+#   #filter(treatment != "reduced + DDD") %>% 
+#   ungroup() %>% 
+#   mutate(replicateID= replicateID[1],ticks=1) %>% 
+#   select(treatment,ticks,replicateID,K) %>% 
+#   distinct() %>%
+#   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>% 
+#   mutate(.value=invlogit(.value)) %>% 
+#   ggplot()+
+#   geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
+#   stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+
+#   scale_y_continuous("Asymptotic velocity (posterior)") +
+#   scale_x_discrete("equilibrium population size K")+
+#   scale_linetype_discrete(name="",
+#                        labels=c(
+#                          expression(paste(frac(3,2*sqrt(2)), "  ", italic(v[F]))),
+#                          expression(italic(v[F])))
+#                        )+
+#   facet_grid(cols=vars(treatment))+
+#   theme_half_open(11)+
+#   background_grid(colour.major = "grey95",colour.minor = "grey95")+
+#   theme(legend.title=element_blank(),legend.position = c(0.86, 0.3),legend.background = element_rect(fill = "white",colour = "black"),legend.margin=margin(t=2,r=2,l=2,b=2))
+# 
+# data_front %>% 
+#   ungroup() %>% 
+#   mutate(replicateID= replicateID[1],ticks=1) %>% 
+#   select(treatment,ticks,replicateID,K) %>% 
+#   distinct() %>%
+#   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
+#   mutate(.value=invlogit(.value))%>% 
+#   mutate(.value=.value/velocity_fisher) %>% 
+#   mean_hdi()
 ```
 
 
-**Supplementary Figure S7.1** : Posterior distribution of the asymptotic front velocity ($v$) in simulations, depending on simulation scenario and equilibrium population size *K*. The horizontal lines mark the range between $ \frac{v}{v_{F}} = 1$ (i.e. pulled waves) and $ \frac{v}{v_{F}} = \frac{3}{2\sqrt2}$ (limit between semi-pushed and fully pushed waves).
+**Supplementary Figure S7.1** : Posterior distribution of the asymptotic front velocity ($v$) in simulations, depending on simulation scenario and equilibrium population size *K*. The horizontal lines mark the range between $ v / v_{F} = 1$ (i.e. pulled waves) and $ v /v_{F} = 3 / 2 \sqrt 2$ (limit between semi-pushed and fully pushed waves).
 
 ```{r}
 library(cowplot) ##temporary, check once plots are restyled
@@ -846,7 +914,6 @@ save(list="mod_popsize",file=here("R_output","supplementary","model_S8_popsize.R
 
 ```
 
-We found that equilibrium population sizes in the range core were higher when connectedness was restricted than in controls, with XXXXXX hosts parasitized in the former and XXXX in the latter, corresponding to a XXXX [106.25; 137.3] increase (**Supplementary Figure S8.1**).
 
 ```{r}
 newdata <- data_popsize %>% ungroup() %>% 
@@ -887,8 +954,6 @@ p2<- newdata %>%
   geom_hline(yintercept=0, lty=2) +
   theme_bw()
 
-p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
-  theme(legend.position="none")
 
 
 
@@ -897,10 +962,18 @@ diffs<- newdata %>%
     ungroup() %>% 
     compare_levels(variable=.value,by=Treatment) %>% mutate(.diff=.value) %>% ungroup() %>% select(-c(.value,Treatment))
 
-newdata %>% 
+diffs_rel<-newdata %>% 
     add_fitted_draws(mod_popsize,re_formula=NA) %>% 
-    ungroup() %>% filter(Treatment=="control") %>% left_join(diffs) %>% mean_hdi(.diff/.value)
+    ungroup() %>% filter(Treatment=="control") %>% left_join(diffs) %>% mutate(.value=.diff/.value) %>% mean_hdi(.value)
 
+```
+
+We found that equilibrium population sizes in the range core were higher when connectedness was restricted than in controls, with the average parasitism rate in the former being `r round(100+100*diffs_rel$.value[1],2)`% [`r round(100+100*diffs_rel$.lower[1],2)`; `r round(100+100*diffs_rel$.upper[1],2)`] of the average in the latter (**Supplementary Figure S8.1**).
+
+
+```{r}
+p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
+  theme(legend.position="none")
 ```
 
 **Supplementary Figure S8.1** Left: Mean population size (estimated as host parasitism rate 7 days post-adult removal) as a function of treatment. Colored areas: posterior distribution; black dots and segment: posterior mean and 66/95% credible intervals. Right: posterior difference between the two experimental treatments.
@@ -911,13 +984,11 @@ newdata %>%
 
 ## S9.1 - validation of `CODICOUNT` estimates of population sizes (Supplementary Material S2)
 
-To compare for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
+To analyse for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
 
 $$
 n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
-
 P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
-
 \mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
 \mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
 $$
@@ -934,7 +1005,6 @@ $$
 0\\
 0\\
 \end{bmatrix},\boldsymbol{\Omega}) \\
-
 \boldsymbol{\Omega} = 
 \begin{bmatrix}
 \sigma_{\alpha} & 0 \\
@@ -985,14 +1055,12 @@ We assumed the parasitism rate $P_{i,x,t,m}$ observed by macro $m$ in patch $x$ 
 
 $$ 
 P_{i,x,t,m} \sim \mathrm{Beta}(\mu_{i,x,t,m}, \phi) \\
-
 \mu_{i,x,t,m} = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{i,x}  + \zeta_{i,x,t} + \eta_{m}\\
-
 \alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
 \gamma_{i,x} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
 \zeta_{i,x,t} \sim \mathrm{Normal}(0,\sigma_{\zeta}) \\
 \eta_{m} \sim \mathrm{Normal}(0,\sigma_{\eta}) \\
 $$
-, where $\alpha$ denote random effects of replicate, $\gamma$ of patch nested in replicate, $\epsilon$ of time nested in patch and replicate, and $\zeta$ random effects accounting for systematic between macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
+, where $\alpha$ denote random effects of replicate, $\gamma$ of patch nested in replicate, $\zeta$ of time nested in patch and replicate, and $\eta$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 # References

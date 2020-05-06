@@ -238,8 +238,7 @@ thresholds <- data_front %>%
   pivot_longer(cols=c(velocity_fisher,threshold_pushed),
                values_to = "threshold_value",names_to = "threshold_type") %>% 
   mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
-                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed"))
 
 #not shown 
 data_front%>% 
@@ -259,7 +258,7 @@ data_front%>%
   geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
 
 data_front %>%
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  #mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
   #filter(treatment != "reduced + DDD") %>% 
   ungroup() %>% 
   mutate(replicateID= replicateID[1],ticks=1) %>% 
