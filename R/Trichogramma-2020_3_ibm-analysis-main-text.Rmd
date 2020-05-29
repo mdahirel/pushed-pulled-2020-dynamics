@@ -203,6 +203,8 @@ data_genetics %>% ungroup() %>%
   mutate(ticks=1) %>% 
   add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
   mutate(.value=10^(.value)) %>% 
+  ungroup() %>% 
+  mutate(treatment=fct_recode(treatment,reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=K,fill=Location,group=Location,y=.value),position="dodge",normalize="xy")+
   facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
@@ -238,7 +240,8 @@ thresholds <- data_front %>%
   pivot_longer(cols=c(velocity_fisher,threshold_pushed),
                values_to = "threshold_value",names_to = "threshold_type") %>% 
   mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
-                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed"))
+                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
+  mutate(treatment=fct_recode(treatment,reference="control"))
 
 #not shown 
 data_front%>% 
@@ -248,6 +251,8 @@ data_front%>%
   distinct() %>% 
   expand_grid(ticks=(1:100)) %>% 
   add_fitted_draws(mod_front,re_formula=NA) %>% 
+  ungroup() %>% 
+  mutate(treatment=fct_recode(treatment,reference="control")) %>% 
   group_by(ticks, treatment) %>% 
   ggplot()+
   geom_line(data=data_front,aes(x=ticks, y=front,group=replicateID),col="grey",alpha=0.2)+
@@ -266,6 +271,8 @@ data_front %>%
   distinct() %>%
   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>% 
   mutate(.value=invlogit(.value)) %>% 
+  ungroup() %>% 
+  mutate(treatment=fct_recode(treatment,reference="control")) %>% 
   ggplot()+
   geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
   stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+

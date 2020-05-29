@@ -1,6 +1,6 @@
 ---
-title: "Supplementary Material for FINAL TITLE COMING SOON"
-author: "Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Lionel Roques, Elodie Vercken (code by M. Dahirel)"
+title: "Supplementary Material for *Shifts from pulled to pushed range expansions caused by reductions in connectedness* (working title)"
+author: "Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Elodie Vercken"
 date:
 output: 
   html_document:
@@ -45,7 +45,7 @@ TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so
 
 <br/>
 <br/>
-**Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, is available on GitHub (**LINK TO ADD!!!**) and Zenodo (**DOI TO ADD**).
+**Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, will be made available on GitHub (**link to be added**) and Zenodo (**DOI to be added**).
 
 # S1 - Creation of genetic lines
 
@@ -332,15 +332,19 @@ newdata <- data_G0 %>%
 data_G0_avg <- data_G0 %>% 
   group_by(landscapeID,Treatment)%>%  
   summarise(distmean=mean(distmean),
-            jitteredTRT=mean(jitteredTRT)) %>% ungroup()
+            jitteredTRT=mean(jitteredTRT)) %>% 
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(factor(Treatment),reference="control"))
 
 ## the main plot                                                           
 p1 <-newdata %>% 
   add_fitted_draws(mod_G0,re_formula=NA) %>% 
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(factor(Treatment),reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=Treatment,y=.value*4,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
   ## we put both observed points (by macros) and the indicative averages for each each landscape
-  geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
+  geom_point(data=data_G0 %>% mutate(Treatment=fct_recode(factor(Treatment),reference="control")),aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
   geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
   scale_fill_manual(values=TRTpalette[c(1,4)])+
   #scale_colour_manual(values=TRTpalette[c(1,4)])+
@@ -546,7 +550,7 @@ mod_front %>%
   group_by(name) %>%
   mean_hdi() %>%
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", name)) %>%
+  mutate(treatment=ifelse(str_detect(name,"control"),"reference", name)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
@@ -558,7 +562,7 @@ mod_front %>%
   mutate(name=c(rep("$\\log_{10}(\\lambda)$",2),rep("$\\mathrm{logit}(v_{t \\to \\infty})$",2))) %>% 
   mutate(name=paste(name,", $K$","=",K,sep="")) %>% 
   #select(parameter,name,K,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
-  select(name,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
+  select(name,reference,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
   column_to_rownames(var="name") %>% 
   kable()
 ```
@@ -578,13 +582,13 @@ mod_front %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", "restricted connectedness")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"control"),"reference", "restricted connectedness")) %>% 
   mutate(parameter=str_split_fixed(name,"_",3)[,2]) %>% 
   select(parameter,treatment,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>% 
   mutate(name=c("$\\log_{10}(\\lambda)$","$\\ln(v_{t \\to \\infty})$","$\\ln(v_{t = 1})$")) %>% 
   #select(parameter,name,standard,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
-  select(name,standard,`restricted connectedness`) %>% #keep this select() for the true final version
+  select(name,reference,`restricted connectedness`) %>% #keep this select() for the true final version
   column_to_rownames(var="name") %>% 
   kable()
 ```
@@ -608,7 +612,7 @@ mod_genetics %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", name)) %>%
+  mutate(treatment=ifelse(str_detect(name,"control"),"reference", name)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
@@ -619,7 +623,7 @@ mod_genetics %>%
   pivot_wider(names_from=treatment,values_from = entry) %>% 
   mutate(name=c(rep("$\\log_{10}(\\lambda)$",4))) %>% 
   mutate(name=paste(name,", $K$","=",K,", ",location," patches",sep="")) %>% 
-  select(name,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
+  select(name,reference,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
   column_to_rownames(var="name") %>% 
   kable()
 ```
@@ -656,7 +660,7 @@ mod_genetics %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", "restricted connectedness")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"control"),"reference", "restricted connectedness")) %>% 
   mutate(parameter=ifelse(!str_detect(name,"is.front"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)","difference front-core in decay rate ($\\beta_{2}$)")) %>% 
   select(parameter,treatment,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>%
@@ -734,6 +738,8 @@ We found that the average new front population was founded by fewer individuals 
 tab_propa %>% 
   mutate(replicateID=replicateID[1]) %>% 
   select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA) %>% 
+  ungroup() %>% 
+  mutate(treatment=fct_recode(factor(treatment),reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=treatment,y=.value+1,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi)+ 
   scale_y_continuous("front population size at establishment (posterior mean)")+
@@ -753,6 +759,8 @@ However, based on our second model, the ratio between "observed" and "expected" 
 tab_propa %>% 
   mutate(replicateID=replicateID[1]) %>% 
   select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa2,re_formula=NA) %>% 
+    ungroup() %>% 
+  mutate(treatment=fct_recode(factor(treatment),reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=treatment,y=.value,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi)+ 
   scale_y_continuous("size of new population, relative to deterministic expectation (posterior mean)")+
@@ -869,7 +877,9 @@ thresholds <- data_front %>%
                values_to = "threshold_value",names_to = "threshold_type") %>%
   mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
                                    `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+    ungroup() %>% 
+  mutate(treatment=fct_recode(factor(treatment),reference="control"))
 
 library(cowplot)
 # #not shown 
@@ -898,6 +908,8 @@ data_front %>%
   distinct() %>%
   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
   mutate(.value=invlogit(.value)) %>%
+    ungroup() %>% 
+  mutate(treatment=fct_recode(factor(treatment),reference="control")) %>% 
   ggplot()+
   geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
   stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+
@@ -957,6 +969,8 @@ data_genetics %>% ungroup() %>%
   mutate(ticks=1) %>% 
   add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
   mutate(.value=10^(.value)) %>% 
+    ungroup() %>% 
+  mutate(treatment=fct_recode(factor(treatment),reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=K,fill=Location,group=Location,y=.value),position="dodge",normalize="xy")+
   facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
@@ -1054,6 +1068,8 @@ newdata <- data_popsize %>% ungroup() %>%
 ## the main plot                                                           
 p1 <-newdata %>% 
   add_fitted_draws(mod_popsize,re_formula=NA) %>% 
+    ungroup() %>% 
+  mutate(Treatment=fct_recode(factor(Treatment),reference="control")) %>% 
   ggplot()+
   stat_eye(aes(x=Treatment,y=.value,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
   ## we put both observed points (by macros) and the indicative averages for each each landscape

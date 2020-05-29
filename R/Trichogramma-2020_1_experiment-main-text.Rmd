@@ -104,7 +104,7 @@ mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_ch
 ### when even with low dispersal founding units were probably rarely below the 100s
 ```
 
-As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "control" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
+As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "reference" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
 
 We have obtained two sources of information:
 
@@ -157,7 +157,7 @@ The `raw_genetics` dataset has two types of variables:
 
 We first play with the dynamics dataset. From the raw dataset we want to produce a `data_front` dataset, to estimate how fast the wave fronts advance
 
-We first need to make an intermediate dataset where we extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (control) and `PS` (restricted connectedness) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results:
+We first need to make an intermediate dataset where we extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (reference) and `PS` (restricted connectedness) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results:
 
 ```{r data-popsize-temp, eval=FALSE}
 data_popsize_temp<- raw_dynamics %>% 
@@ -512,10 +512,12 @@ p1 <- data_front %>%
   expand_grid(Generation=(1:130)/10) %>% 
   add_fitted_draws(mod_front,re_formula=NA) %>% 
   mutate(.value_front=.value) %>% 
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(Treatment,reference="control")) %>% 
   group_by(Generation,Treatment) %>% 
   ggplot()+
   stat_lineribbon(aes(x=Generation,y=.value_front,fill=Treatment),.width=0.95,alpha=0.3,point_interval = mean_hdi)+
-  geom_line(data=data_front,aes(x=Generation,y=front,group=landscapeID,col=Treatment))+
+  geom_line(data=data_front %>% mutate(Treatment=fct_recode(Treatment,reference="control")),aes(x=Generation,y=front,group=landscapeID,col=Treatment))+
   scale_fill_manual(values=TRTpalette[c(1,4)])+
   scale_colour_manual(values=TRTpalette[c(1,4)])+
   scale_y_continuous("Front location (patches from release)")+
@@ -532,6 +534,8 @@ p2 <- data_front %>%
   distinct() %>%
   add_fitted_draws(mod_front,nlpar="logspeedasym",re_formula=NA) %>% 
   mutate(.value=exp(.value)) %>% ##backtransformation
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(Treatment,reference="control")) %>% 
   ggplot()+
   geom_eye(aes(x=Treatment,y=.value,fill=Treatment),slab_alpha=0.3,point_interval = mean_hdi)+
   scale_fill_manual(values=TRTpalette[c(1,4)])+
@@ -571,9 +575,11 @@ p1 <- data_genetics %>%
   expand_grid(Generation=c(0:120)/10) %>%  
   add_fitted_draws(mod_genetics,re_formula=NA) %>% 
   mutate(.value=invlogit(.value)) %>% 
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(Treatment,reference="control")) %>% 
   ggplot()+
   stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
-  geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+
+  geom_point(data=data_genetics %>%   mutate(Treatment=fct_recode(Treatment,reference="control")) ,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+
   #alternate geom_point, to display the difference in elpd between logit student and logit normal through point size:
   #geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location,size=elpd1-elpd3),pch=21)+
   scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
@@ -589,7 +595,9 @@ p2<- data_genetics %>%
   distinct() %>% 
   add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
   mutate(.value=10^(.value)) %>% 
-  filter(is.front!=0) %>% 
+  filter(is.front!=0) %>%
+  ungroup() %>% 
+  mutate(Treatment=fct_recode(Treatment,reference="control")) %>% 
   ggplot()+
   geom_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
   scale_fill_manual(values=frontcorePalette[c(3,2,1)])+
