@@ -20,12 +20,10 @@ knitr::opts_chunk$set(echo = TRUE)
 library(nlrx)
 library(arm)
 library(tidyverse)
+library(cowplot)
 library(ggrepel) ## for the proof-of-principle graph
 library(here)
 ```
-
-# TO DO
-parallelize the `running-simulations` chunk?
 
 # Introduction
 
@@ -34,19 +32,19 @@ parallelize the `running-simulations` chunk?
 Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way:
 
 ```{r proof-of-principle, echo = FALSE}
-#proof of principle that reduced connectivity restricts dispersal at low N, due to properties of the binomial distribution
-expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:450) %>% 
+#proof of principle that reduced connectivity restricts dispersal to new patches at low N, due to properties of the binomial distribution
+expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:500) %>% 
 mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
  ggplot()+
   geom_line(aes(x=N,y=1-pbinom(0,N,dispersal.rate),col=dispersal.rate,group=dispersal.rate),size=1.2)+
   scale_y_continuous(name="Probability that at least one individual disperses")+
-  scale_x_log10(name="Population size before dispersal phase")+
+  scale_x_log10(name="Population size before dispersal phase",breaks=c(1,2,5,10,20,50,100,200,500))+
   scale_color_gradient(name="Mean dispersal rate",low="black",high="grey60") +
   geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=dispersal.rate),nudge_x = -2)+
-  theme_bw()+
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95",colour.minor = "grey95")+
   theme(legend.position = "none")
 ### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
-### when even with low dispersal founding units were probably rarely below the 100s
 ```
 
 The aim of the model is to test this prediction using information on front velocity and genetic diversity in the front and core patches of expanding metapopulations. To validate the simulation, we also set up treatments with Allee effects and (classical) density-dependent dispersal. We focus on relatively "low" population sizes, as they are where our effect of interest is present, and have been understudied in theory. We look at two populations sizes because of previous research showing equilibrium population size *K* influences the dynamics of pushed waves, and to have a qualitative point of comparison in case experimental data also involve shifts in *K*.
@@ -72,11 +70,11 @@ nl_object <- nl(nlversion = NLVERSION, nlpath = NLPATH,
 ```
 
 
-Then, let's set the experimental design. There is four main treatments, plus a combination ( density-dependent dispersal + reduced connectedness) that is used in Supplementary Materials. More detailed information on parameter ad parameter choices can be found in the manuscript and in the Info pane of the NetLogo file
+Then, let's set the experimental design. There is four main treatments, plus a combination ( density-dependent dispersal + reduced connectedness) that is used in Supplementary Materials. More detailed information on parameter and parameter choices can be found in the manuscript and in the Info pane of the NetLogo file
 
 ```{r design-grid}
 ###designing the experiment
-trt_grid=tibble(treatment=c("control","weak Allee effect (a = 0.95)",
+trt_grid=tibble(treatment=c("reference","weak Allee effect (a = 0.95)",
                             "density-dependent dispersal",
                             "reduced connectedness",
                             "reduced + DDD"),
@@ -93,7 +91,7 @@ trt_grid=tibble(treatment=c("control","weak Allee effect (a = 0.95)",
 ```
 
 
-Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object:
+Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object (we encourage readers to look at the info pane in the .nlogo model file for details):
 
 ```{r set-experiment}
 
@@ -110,13 +108,14 @@ nl_object@experiment <- experiment(
   metrics=c("ticks"),
   metrics.patches = c("pxcor","N_predispersal","N_postdispersal","N_allele0","N_allele1"),
   constants=list(
-    "trait_variation"= "\"reshuffled\"",   ### note how string variable/csts must be entered
+    "trait_variation"= "\"reshuffled\"",   ### note how string variable/csts must be entered ### traits are redrawn at random every generation
+    ## so no evolution . Moot because no trait variation (see below), but still
     #"K"=450,
     #"start_allee_thres"=5,
     "duration"=duration,
-    "logit_disp0_sd"=0,
+    "logit_disp0_sd"=0,  #individual variation in underlying trait, fixed to 0 for this paper
     #"disp0_mean"=0.2, 
-    "slope_disp_sd"=0
+    "slope_disp_sd"=0    #individual variation in underlying trait, fixed to 0 for this paper
     #"slope_disp_mean"=0,
     #"fecundity"=5,
     ),
@@ -134,7 +133,7 @@ nl_object@experiment <- experiment(
 
 
 And we're go for running the simulations! We set a "distinct" simulation design (see `nlrx` help).
-(Careful, script is not parallelized, so running 500 replicates in total is expected to take a few hours)
+(Careful, script is not parallelized, so running 500 replicates in total is expected to take up to a few hours)
 
 ```{r running-simulations}
 
@@ -146,6 +145,8 @@ exp1_2020 <- run_nl_all(nl_object)
 #setsim(nl_object, "simoutput") <- exp1_2020 #not needed
 #write_simoutput(nl_object)   #not needed
 ```
+
+We can now process the result for the main analyses (and their 5-treatment equivalent in supplementary material):
 
 ```{r processing-output-presaving}
 
@@ -175,6 +176,8 @@ write_csv(tab, path=here("NetLogo_output/model-output.csv"))
 
 We can now use the `ibm-analysis` scripts to analyse the model outputs.
 
+
+Let's also save a file containing more info on population size of newly founded front patches:
 
 ```{r processing-supplementary}
 
