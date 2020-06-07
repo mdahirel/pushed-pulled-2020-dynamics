@@ -13,37 +13,32 @@ editor_options:
 ---
 
 
-```{r}
-library(arm)
-library(tidyverse)
-library(here)
-
-library(modelr)
-library(RColorBrewer)
-
-###inference
-library(coda)
-library(rstan)
-library(bayesplot)
-library(brms)
-rstan_options(auto_write = TRUE)
-options(mc.cores = 2)
-library(tidybayes)
-library(cowplot)
-library(patchwork)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# TO DO 
+```{r load-packages, warning = FALSE, message = FALSE}
+library(arm)  #for invlogit
 
-- check priors for parameters that have been multiplied by *X* to make them fit within "general priors" (and all the others)
-- find a valid colour code (reminder: need 6 different colours, a subgroup of 4 for treatment plots and a subgroup of 2 for front/core plots, ideally qualitative scales, colourblind- and BW-friendly at least within each subgroup)
-- markdown comments?
-- clean and tidy code, re-arrange order of lines in ggplot code
-- check all loaded packages are still actually useful
--remove the restricted +DDD from the main text model
-- do the genetics model as a logit student here too??
-- tidying up model control params (iter, chains, delta...)
-- choose colors that are colorblind AND greyscale friendly (the front/core ones are currently NOT)
+library(tidyverse)
+
+library(rstan)
+rstan_options(auto_write = TRUE)
+options(mc.cores = 2)
+library(brms)
+
+library(bayesplot)
+
+library(tidybayes)
+
+library(cowplot)
+library(ggrepel)
+library(patchwork)
+
+library(adegenet)
+
+library(here)
+```
 
 ```{r importing-data}
 data <- read_csv(file=here("NetLogo_output/model-output.csv"))
@@ -54,10 +49,11 @@ data <- read_csv(file=here("NetLogo_output/model-output.csv"))
 ## genetics
 
 ```{r}
+#not shown
 #ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
 ###lots of zero, can't use
 
-####method variance in fraction (gandhi 2019 pnas). works by "averaging across" replicates, no zeros in dataset
+####we'll use method variance in fraction (gandhi 2019 pnas). works by "averaging across" replicates, no zeros in dataset
 #### simplifies problems caused in Hexp when there are zeros (beta, logit transformations can't do anything)
 
 data_genetics <- data %>% 
