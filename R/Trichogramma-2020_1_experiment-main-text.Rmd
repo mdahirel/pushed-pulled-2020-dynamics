@@ -60,7 +60,7 @@ At each generation, adults were left free to move and reproduce for 48 hours bef
 
 We expected that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties:
 
-```{r proof-of-principle, echo = FALSE}
+```{r proof-of-principle, echo = FALSE, warning= FALSE, message= FALSE}
 #proof of principle that reduced connectivity restricts dispersal to new patches at low N, due to properties of the binomial distribution
 expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:500) %>% 
 mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
@@ -102,7 +102,7 @@ raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"),
 
 The `raw_dynamics` dataset contains the following variables:
 
-- `Generation` : number of generations since release into experimental landscapes (initially released individuals = 0)
+- `Generation` : number of generations since release into experimental landscapes (initially released individuals have `Generation` = 0)
 
 - `Bloc` : experimental setup block, not used
 
