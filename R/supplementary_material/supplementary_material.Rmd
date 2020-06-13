@@ -681,7 +681,7 @@ mod_genetics %>%
 
 # S6 - By how many individuals are new populations founded (in simulations)?
 
-One of our main simulation results is that range expansions with reduced connectedness are pushed (based on velocity ratios) and yet lose diversity faster than reference expansions. To better understand this, we looked at $N_{x+1,t+1}$, the number of individuals one patch ahead of the current front patch $X$, one generation later (after the immigration phase and before reproduction). As we are interested in the size of new populations, we discard cases where $N_{X+1,t+1} = 0$, which correspond to dispersal failures and no new front population. In addition, we focused on “reference” and “restricted connectedness” treatments for simplicity, and discarded data from $t = 1$, as individuals can only move in one direction at the very start of the experiment.
+One of our main simulation results is that range expansions with reduced connectedness are pushed (based on velocity ratios) and yet lose diversity faster than reference expansions. To better understand this, we looked at $N_{X+1,t+1}$, the number of individuals one patch ahead of the current front patch $X$, one generation later (after the immigration phase and before reproduction). As we are interested in the size of new populations, we discard cases where $N_{X+1,t+1} = 0$, which correspond to dispersal failures and no new front population. In addition, we focused on “reference” and “restricted connectedness” treatments for simplicity, and discarded data from $t = 1$, as individuals can only move in one direction at the very start of the experiment.
 
 We first analysed  $N_{X+1,t+1}$ as a function of treatment and $K$, as well as their interactions. To do so, we used a negative binomial GLMM with the aforementioned variables as fixed effects and replicate identity as a random effect. To work around the fact our data are zero-truncated, two solutions are possible: either include the truncation in-model, or instead model $N_{X+1,t+1} - 1$. We chose the latter approach due to simplicity, but both can easily be implemented and lead to the same results.
 
@@ -862,12 +862,12 @@ save(list="mod_front",file=here("R_output","supplementary","modelS7_front_IBM.Rd
 ```{r, fig.width=10}
 
 thresholds <- data_front %>%
-  mutate(threshold_pushed=(3/(2*sqrt(2)))*velocity_fisher) %>%
-  select(K,treatment,velocity_fisher,threshold_pushed) %>%
+  mutate(threshold_pushed=(3/(2*sqrt(2)))*v_f) %>%
+  select(K,treatment,v_f,threshold_pushed) %>%
   distinct() %>%
-  pivot_longer(cols=c(velocity_fisher,threshold_pushed),
+  pivot_longer(cols=c(v_f,threshold_pushed),
                values_to = "threshold_value",names_to = "threshold_type") %>%
-  mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
+  mutate(threshold_type=fct_recode(threshold_type,vF="v_f",
                                    `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>%
   mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
 
@@ -920,7 +920,7 @@ data_front %>%
 #   distinct() %>%
 #   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
 #   mutate(.value=invlogit(.value))%>% 
-#   mutate(.value=.value/velocity_fisher) %>% 
+#   mutate(.value=.value/v_f) %>% 
 #   mean_hdi()
 ```
 

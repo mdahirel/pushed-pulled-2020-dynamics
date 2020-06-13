@@ -24,7 +24,7 @@ library(tidyverse)
 
 library(rstan)
 rstan_options(auto_write = TRUE)
-options(mc.cores = 2)
+#options(mc.cores = 2)
 library(brms)
 
 library(bayesplot)
@@ -57,7 +57,7 @@ data <- read_csv(file=here("NetLogo_output/model-output.csv"))
 (NB: the fifth scenario is only used in Supplementary Material, but was simulated at the same time as the others so is in the same dataset)
 
 
-This dataset contains the following variables (see script 2):
+This dataset contains the following variables (see script 2 for how they were obtained):
 
 - `ticks` : number of generations since release
 
@@ -77,9 +77,9 @@ This dataset contains the following variables (see script 2):
 
 - `is.front`: whether the focal patch is the most advanced one at the time ("front", TRUE), or the initial, release patch ("core", FALSE). Combine with `ReplicateID`, define a time series (see `Location_full`)
 
--  `Hexp`: patch genetic diversiy (expected heterozygosity)
+-  `Hexp`: patch genetic diversity (expected heterozygosity)
 
-- `velocity_fisher`: expected velocity of a pulled wave with identical fecundity and dispersal at low density as the focal one (estimated here for population density = 1)
+- `v_f`: expected velocity of a pulled wave with identical fecundity and dispersal at low density as the focal one (estimated here for population density = 1)
 
 ## Data processing
 
@@ -151,7 +151,7 @@ bf_front <- bf(front~log(speed*ticks),
 
 mod_front=brm(bf_front,
               data=data_front,
-              chains=4,iter=12000,warmup=2000,
+              chains=4,iter=400,warmup=200,
               prior=prior_front,
               seed=42)
 
@@ -251,12 +251,12 @@ frontcorePalette <- c("#56B4E9","#E69F00","#000000") # 3 colors, for core, front
 ```{r}
 
 thresholds <- data_front %>% 
-  mutate(threshold_pushed=(3/(2*sqrt(2)))*velocity_fisher) %>% 
-  select(K,treatment,velocity_fisher,threshold_pushed) %>% 
+  mutate(threshold_pushed=(3/(2*sqrt(2)))*v_f) %>% 
+  select(K,treatment,v_f,threshold_pushed) %>% 
   distinct() %>% 
-  pivot_longer(cols=c(velocity_fisher,threshold_pushed),
+  pivot_longer(cols=c(v_f,threshold_pushed),
                values_to = "threshold_value",names_to = "threshold_type") %>% 
-  mutate(threshold_type=fct_recode(threshold_type,vF="velocity_fisher",
+  mutate(threshold_type=fct_recode(threshold_type,vF="v_f",
                                    `3/(2 x sqrt(2))) x vF`="threshold_pushed")) %>% 
   mutate(treatment=fct_recode(treatment,reference="control"))
 
@@ -312,7 +312,7 @@ data_front %>%
   distinct() %>%
   add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
   mutate(.value=invlogit(.value))%>% 
-  mutate(.value=.value/velocity_fisher) %>% 
+  mutate(.value=.value/v_f) %>% 
   mean_hdi()
 ```
 

@@ -84,7 +84,7 @@ trt_grid=tibble(treatment=c("reference","weak Allee effect (a = 0.95)",
 ) %>% 
   mutate(fecundity = 5) %>%  ## close to Trichogramma conditions given their sex ratio of about 50% and assuming 24 or 48 h of egg laying, as in experiments, see manuscript
   expand_grid(K=c(225,450)) %>% 
-  mutate(velocity_fisher=2*sqrt(
+  mutate(v_f=2*sqrt(              ## v_f = expected velocity of "equivalent" pulled wave:
     log(fecundity)*(1 - 1 / K) * (1 - start_allee_thres / 1)*  ## fecundity term at N = 1 
                                   0.5*invlogit(logit(disp0_mean)+(1/K)*slope_disp_mean)) ## dispersal term at N = 1
     )
