@@ -275,7 +275,7 @@ data_popsize_temp<- raw_dynamics %>%
   mutate(Peggs_est=P/(P+H), ## proportion of pixels counted as parasitised (estimated)
          spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep=""), # a unique ID for each replicate x patch x generation combination
          Mix = factor(Mix)) %>% 
-  mutate(Treatment = fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
+  mutate(Treatment = fct_recode(Treatment,`reference`="PL",`restricted connectedness`="PS"))
 
 data_G0 <- filter(data_popsize_temp,Generation==1 & Patch<=4) %>%  
   ##only patches 0 to 4 are available at start (adding "Patch <=4" above should not be necessary, but it makes it explicit)
@@ -309,7 +309,7 @@ mod_G0 <- brm(bf(distmean/4~0+Treatment+scale_Pall+(1|Macro),
         nlf(phi~1/invphi),
         invphi~1),
         data=data_G0,family=Beta(link_phi="identity"),
-        iter=5000,chains=4,
+        iter=6000,chains=4,
         prior=c(
           set_prior("normal(0,1.5)",class="b"),
           set_prior("normal(0,1)",class="sd"),
@@ -357,7 +357,7 @@ p2<- newdata %>%
   stat_eye(aes(x=Treatment,y=.value*4),.width=c(0.66,0.95),fill="grey",point_interval = mean_hdi)+
   scale_x_discrete("",labels="")+
   scale_y_continuous("Difference between treatments",
-                     limits=c(-0.2,2.5)-4*invlogit(fixef(mod_G0)["Treatmentcontrol","Estimate"])) + ##so the "difference" subplot is aligned with the main
+                     limits=c(-0.2,2.5)-4*invlogit(fixef(mod_G0)["Treatmentreference","Estimate"])) + ##so the "difference" subplot is aligned with the main
   geom_hline(yintercept=0, lty=2) +
   theme_bw()
 
@@ -546,7 +546,7 @@ mod_front %>%
   group_by(name) %>%
   mean_hdi() %>%
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", name)) %>%
+  mutate(treatment=ifelse(str_detect(name,"reference"),"reference", name)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
@@ -578,7 +578,7 @@ mod_front %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", "restricted connectedness")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"reference"),"reference", "restricted connectedness")) %>% 
   mutate(parameter=str_split_fixed(name,"_",3)[,2]) %>% 
   select(parameter,treatment,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>% 
@@ -608,7 +608,7 @@ mod_genetics %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", name)) %>%
+  mutate(treatment=ifelse(str_detect(name,"reference"),"reference", name)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
@@ -656,7 +656,7 @@ mod_genetics %>%
   group_by(name) %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
-  mutate(treatment=ifelse(str_detect(name,"control"),"standard", "restricted connectedness")) %>% 
+  mutate(treatment=ifelse(str_detect(name,"reference"),"reference", "restricted connectedness")) %>% 
   mutate(parameter=ifelse(!str_detect(name,"is.front"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)","difference front-core in decay rate ($\\beta_{2}$)")) %>% 
   select(parameter,treatment,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>%
@@ -696,7 +696,7 @@ data <- read_csv(file=here("NetLogo_output/model-output_supplementary.csv"))
 ```{r}
 
 tab_propa <- data %>% 
-   filter(treatment == "control" | treatment =="reduced connectedness") %>% 
+   filter(treatment == "reference" | treatment =="reduced connectedness") %>% 
    mutate(K=factor(K),replicateID=paste(treatment,K,seedID)) %>% 
    select(treatment,replicateID,ticks,K,is.front,N_predispersal,N_postdispersal,disp0_mean) %>% 
    pivot_wider(names_from = is.front,values_from=c(N_predispersal,N_postdispersal)) %>% 
@@ -714,14 +714,16 @@ mod_propa1=brm(bf(N_founders-1~0+treatment:K+(1|replicateID),
                family=negbinomial(link_shape = "identity"),data=tab_propa,
               prior=c(set_prior("normal(0,5)",class="b"),
                       set_prior("normal(0,1)",class="sd"),
-                      set_prior("normal(0,1)",nlpar="invshape")),chains=4,iter=500,seed=42)
+                      set_prior("normal(0,1)",nlpar="invshape")),chains=4,seed=42,iter=4000,
+              control=list(adapt_delta=0.95))
 
 
 mod_propa2=brm(bf(N_founders/(N_source*0.5*disp0_mean)~0+treatment:K+(1|replicateID)),
               family=lognormal,data=tab_propa,
               prior=c(set_prior("normal(0,1)",class="b"),
                       set_prior("normal(0,1)",class="sd"),
-                      set_prior("normal(0,1)",class="sigma")),chains=4,iter=500,seed=42)
+                      set_prior("normal(0,1)",class="sigma")),chains=4,seed=42,iter=6000,
+              control=list(adapt_delta=0.95))
 
 save(list=c("mod_propa1","mod_propa2"),file=here("R_output","supplementary","model_S6_sizefront_IBM.Rdata"))
 }
@@ -984,9 +986,9 @@ data_genetics %>% ungroup() %>%
 
 **Supplementary Figure S7.2** : Posterior distribution of the decay rate of genetic with time ($\lambda$) in simulations, depending on simulation scenario, equilibrium population size $K$ and patch location (either the original release site (core) or the most advanced patch at the time of measure (front)). Please note that posterior for core and front patches are displayed on different scales on the y-axis, for readability.
 
-# S8 - Differences in equilibrium population size between experimental treatments
+# S8 - Differences in equilibrium population size between experimental treatments (preliminary look)
 
-We used a Beta generalized linear mixed model to determine whether *Trichogramma* population sizes (computer-estimated parasitism rates) differed between our two experimental treatments. We focused on core patches that were expected to be at equilibrium. For the purpose of this analysis, we conservatively defined “core” patches as “patches for which the distance to the release site is equal or lower than 25% of the distance release site – front patch at the time of sampling”. Our model included fixed effects of experimental treatment, as well as random effects of observation macro (to account for systematic macro bias, see **Supplementary Figure S2.1**), replicate identity, and patch identity nested in replicate and generation nested in patch to account for spatially and temporally repeated observations.
+We used a Beta generalized linear mixed model to determine whether *Trichogramma* population sizes (computer-estimated parasitism rates) differed between our two experimental treatments. We focused on core patches that were expected to be at equilibrium. For the purpose of this preliminary analysis, we conservatively defined “core” patches as “patches for which the distance to the release site is equal or lower than 25% of the distance release site – front patch at the time of sampling”. Our model included fixed effects of experimental treatment, as well as random effects of observation macro (to account for systematic macro bias, see **Supplementary Figure S2.1**), replicate identity, and patch identity nested in replicate and generation nested in patch to account for spatially and temporally repeated observations.
 
 ```{r popsize}
 
@@ -999,14 +1001,14 @@ data_popsize_temp<- raw_dynamics %>%
          Replicate = as.numeric(str_sub(Image,4,4)),
          Patch = as.numeric(str_sub(Image,6,7))
   ) %>% 
-  #no further processing needed; we exploit the fact that chars 6&7 are either digit dot (patchs 0 to 9)
+  #no further processing needed; we exploit the fact that chars 6&7 are either digit dot (patches 0 to 9)
 #or digit-digit (patches 10 and beyond)
 ## as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
   mutate(landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% #a unique replicate ID
   mutate(Peggs_est=P/(P+H), ## proportion of pixels counted as parasitised (estimated)
          spacetimeID=paste(landscapeID,"_Generation",Generation,"_Patch",Patch,sep=""), # a unique ID for each replicate x patch x generation combination
          Mix = factor(Mix)) %>% 
-  mutate(Treatment = fct_recode(Treatment,`control`="PL",`restricted connectedness`="PS"))
+  mutate(Treatment = fct_recode(Treatment,`reference`="PL",`restricted connectedness`="PS"))
 #### end of block
 
 
@@ -1074,7 +1076,7 @@ p2<- newdata %>%
   stat_eye(aes(x=Treatment,y=.value),.width=c(0.66,0.95),fill="grey",point_interval = mean_hdi)+
   scale_x_discrete("",labels="")+
   scale_y_continuous("Difference between treatments",
-                     limits=c(0,1)-invlogit(fixef(mod_popsize)["Treatmentcontrol","Estimate"])) + ##so the "difference" subplot is aligned with the main
+                     limits=c(0,1)-invlogit(fixef(mod_popsize)["Treatmentreference","Estimate"])) + ##so the "difference" subplot is aligned with the main
   geom_hline(yintercept=0, lty=2) +
   theme_bw()
 
@@ -1088,7 +1090,7 @@ diffs<- newdata %>%
 
 diffs_rel<-newdata %>% 
     add_fitted_draws(mod_popsize,re_formula=NA) %>% 
-    ungroup() %>% filter(Treatment=="control") %>% left_join(diffs) %>% mutate(.value=.diff/.value) %>% mean_hdi(.value)
+    ungroup() %>% filter(Treatment=="reference") %>% left_join(diffs) %>% mutate(.value=.diff/.value) %>% mean_hdi(.value)
 
 ```
 

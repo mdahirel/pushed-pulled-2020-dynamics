@@ -151,7 +151,7 @@ bf_front <- bf(front~log(speed*ticks),
 
 mod_front=brm(bf_front,
               data=data_front,
-              chains=4,iter=400,warmup=200,
+              chains=2,iter=200,warmup=100,
               prior=prior_front,
               seed=42)
 

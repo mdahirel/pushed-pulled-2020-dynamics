@@ -32,6 +32,7 @@ library(tidybayes)
 
 library(cowplot)
 library(ggrepel)
+library(ggtext)
 library(patchwork)
 
 library(adegenet)
@@ -63,13 +64,13 @@ We expected that (at low population sizes) reduced connectedness should lead to 
 ```{r proof-of-principle, echo = FALSE, warning= FALSE, message= FALSE}
 #proof of principle that reduced connectivity restricts dispersal to new patches at low N, due to properties of the binomial distribution
 expand_grid(dispersal.rate=c(0.05,0.1,0.2,0.4),N=1:500) %>% 
-mutate(label = if_else(N == min(N), paste("p = ", dispersal.rate, sep=""), NA_character_)) %>%
+mutate(label = if_else(N == min(N), paste("*D* = ", dispersal.rate, sep=""), NA_character_)) %>%
  ggplot()+
   geom_line(aes(x=N,y=1-pbinom(0,N,dispersal.rate),col=dispersal.rate,group=dispersal.rate),size=1.2)+
   scale_y_continuous(name="Probability that at least one individual disperses")+
-  scale_x_log10(name="Population size before dispersal phase",breaks=c(1,2,5,10,20,50,100,200,500))+
+  scale_x_log10(name="Population size before dispersal phase",breaks=c(1,2,5,10,20,50,100,200,500),limits=c(0.4,500))+
   scale_color_gradient(name="Mean dispersal rate",low="black",high="grey60") +
-  geom_label_repel(aes(x=N,y=dispersal.rate,label=label,col=dispersal.rate),nudge_x = -2)+
+  geom_textbox(aes(x=N,y=dispersal.rate,label=label),width=0.15,box.padding=unit(c(1,0,1,0), "pt"),halign=0.5,hjust=1, vjust=0)+
   theme_half_open(11) +
   background_grid(colour.major = "grey95",colour.minor = "grey95")+
   theme(legend.position = "none")
@@ -95,7 +96,7 @@ raw_dynamics<- read_csv(here("data/Trichogramma_dynamics.csv"))
 raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
                          col_types = cols(.default=col_character())
 )
-##forcing locus columns to be character otherwise some important leading zeroes are lost ( a 082082 individual _homozygote with two "082" alleles_ becomes 82082, 000000 becomes 0)
+##forcing locus columns to be character otherwise some important leading zeroes are lost ( a 090090 individual _homozygote with two "090" alleles_ becomes 90090, 000000 becomes 0)
 ## there are other way to do it by doing it downscript (see e.g. stringr::str_pad()) but best to do it right at the outset
 ```
 
@@ -308,7 +309,7 @@ bf_genetics=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
 
 mod_genetics=brm(bf_genetics,
                  data=data_genetics,
-                 chains=4,iter=8000,warmup=4000,
+                 chains=4,iter=4000,warmup=2000,
                  prior=c(prior_genetics,
                          set_prior("normal(0,1)",class="sigma"),
                          set_prior("gamma(2,0.1)",class="nu")),
@@ -363,7 +364,7 @@ bf_genetics2=bf(Hexp~logit(H0*exp(-decay*Generation)),
 
 mod_genetics2=brm(bf_genetics2,
                  data=data_genetics,
-                 chains=4,iter=8000,warmup=4000,
+                 chains=4,iter=4000,warmup=2000,
                  prior=c(prior_genetics,
                          set_prior("normal(0,1)",nlpar="invphi",lb=0)),
                  seed=42,control=list(adapt_delta=0.9)
@@ -402,10 +403,10 @@ bf_genetics3=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
 
 mod_genetics3=brm(bf_genetics3,
                  data=data_genetics,
-                 chains=4,iter=8000,warmup=4000,
+                 chains=4,iter=4000,warmup=2000,
                  prior=c(prior_genetics,
                          set_prior("normal(0,1)",class="sigma")),
-                 seed=42,control=list(adapt_delta=0.95)
+                 seed=42,control=list(adapt_delta=0.99)
 )
 
 save(list="mod_genetics3",file=here("R_output","model2ter_genet_expe.Rdata"))
