@@ -43,7 +43,7 @@ library(here)
 # TO DO
 
 Nearly everything is done and clean, but still a few things to perfect:
-- find a valid color code !!! choose colors that are colorblind AND greyscale friendly (the front/core ones are currently NOT)
+- find a valid color code !!! choose colors that are colorblind AND greyscale friendly (the edge/core ones are currently NOT)
 - add title and link to preprint when available
 
 # Introduction
@@ -119,7 +119,7 @@ The `raw_dynamics` dataset contains the following variables:
 
 The `raw_genetics` dataset has two types of variables:
 
-- `ID` : a unique individual ID structured as `G[generation]_[genetic mix ID][Treatment ID]_[Replicate sub-ID]_[Individual sub-ID]` . Individual and replicate sub-ID are non-unique (they are repeated across Mix and Treatments)
+- `ID` : a unique individual ID structured as `G[generation]_[genetic mix ID][Treatment ID]_[Replicate sub-ID][patch location]_[Individual sub-ID]` . Individual and replicate sub-ID are non-unique (they are repeated across Mix and Treatments)(patch location is absent _ but not needed _ from G0 IDs)
 
 - `P[X]` where [X] is a number (19 columns, 6-digit strings) : Individual genotype at microsatellite locus `P[X]`. Each allele is described by a 3-digit string, so each value corresponds to the 2 alleles pasted together
 
@@ -178,13 +178,13 @@ data_genetics<-raw_genetics %>%
     Generation=as.numeric(str_extract(Generation,"0|4|8|12")),
     Mix=as.numeric(str_extract(Mix,"1|2|3")),
     Replicate=as.numeric(str_extract(Replicate,"[:digit:]")),
-    Location=fct_recode(Location,core="C",front="F")
+    Location=fct_recode(Location,core="C",edge="F")
   ) %>% 
   mutate(Location=as.character(Location)) %>% 
-  mutate(Location=replace_na(Location,"origin")) %>% ## samples that are neither core nor front are from the origin (G0)
+  mutate(Location=replace_na(Location,"origin")) %>% ## samples that are neither core nor edge are from the origin (G0)
   mutate(Location=factor(Location),landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% 
   mutate(spacetimeID=paste(landscapeID,"_Generation",Generation,"_Location",Location,sep=""))%>% #unique population (landscape x patch location x time) ID
-  mutate(is.front=-0.5*(Location=="core")+0.5*(Location=="front"), ## dummy variable to make interpreting interaction coefs easier
+  mutate(is.edge=-0.5*(Location=="core")+0.5*(Location=="edge"), ## dummy variable to make interpreting interaction coefs easier
          Treatment=fct_recode(Treatment,`reference`="PL",`restricted connectedness`="PS"))
 ```
 
@@ -192,7 +192,7 @@ Then we convert allele columns in a format that allows us to calculate expected 
 
 ```{r data-genetics-2, eval=FALSE}
 ### STEP 2 isolate the genetics markers
-genmat<- df2genind(select(data_genetics,starts_with("P")),####all allelic columns start with a "P"
+genmat<- df2genind(select(data_genetics,starts_with("TB")),####all allelic columns start with a "P"
             ncode=3,
             NA.char = "000", ## missing alleles
             ind.names=data_genetics$ID,pop=data_genetics$spacetimeID) #ncode=3 bc 3 characters for one allele
@@ -304,7 +304,7 @@ bf_genetics=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
-               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.edge+(is.edge|1|landscapeID),
                family=student(),nl=TRUE)
 
 mod_genetics=brm(bf_genetics,
@@ -357,7 +357,7 @@ bf_genetics2=bf(Hexp~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
-               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.edge+(is.edge|1|landscapeID),
                nlf(phi~1/invphi),
                invphi~1,
                family=Beta(link_phi="identity"),nl=TRUE)
@@ -398,7 +398,7 @@ bf_genetics3=bf(logit(Hexp)~logit(H0*exp(-decay*Generation)),
                nlf(H0~inv_logit(logitH0)),
                nlf(decay~10^(logdecay)),
                logitH0~1+(1|1|landscapeID),
-               logdecay~0+Treatment+Treatment:is.front+(is.front|1|landscapeID),
+               logdecay~0+Treatment+Treatment:is.edge+(is.edge|1|landscapeID),
                family=gaussian,nl=TRUE)
 
 mod_genetics3=brm(bf_genetics3,
@@ -459,7 +459,7 @@ Now we can draw the figures associated with these models, and maybe get back som
 ```{r color-palettes, eval=FALSE}
 
 TRTpalette <- c("#F0E442","#CC79A7")
-frontcorePalette <- c("#56B4E9","#E69F00","#000000") # 3 colors, for core, front and origin (black) patches
+edgecorePalette <- c("#56B4E9","#E69F00","#000000") # 3 colors, for core, edge and origin (black) patches
 
 ```
 
@@ -529,19 +529,19 @@ data_front %>%
 
 p1 <- data_genetics %>% 
   mutate(landscapeID = landscapeID[1]) %>% 
-  select(Treatment,is.front,Location,landscapeID) %>% 
+  select(Treatment,is.edge,Location,landscapeID) %>% 
   distinct() %>% 
-  filter(is.front!=0) %>% 
+  filter(is.edge!=0) %>% 
   expand_grid(Generation=c(0:120)/10) %>%  
   add_fitted_draws(mod_genetics,re_formula=NA) %>% 
   mutate(.value=invlogit(.value)) %>% 
   ungroup() %>% 
   ggplot()+
   stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
-  geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location),pch=21,size=2)+
+  geom_point(data=data_genetics,aes(x=Generation+is.edge,y=Hexp,bg=Location),pch=21,size=2)+
   #alternate geom_point, to display the difference in elpd between logit student and logit normal through point size:
-  #geom_point(data=data_genetics,aes(x=Generation+is.front,y=Hexp,bg=Location,size=elpd1-elpd3),pch=21)+
-  scale_fill_manual(values=frontcorePalette)+
+  #geom_point(data=data_genetics,aes(x=Generation+is.edge,y=Hexp,bg=Location,size=elpd1-elpd3),pch=21)+
+  scale_fill_manual(values=edgecorePalette)+
   scale_y_continuous(name = "Genetic diversity (Hexp)") +
   scale_x_continuous(name = "Generations since start") +
   facet_wrap(~Treatment) + 
@@ -550,15 +550,15 @@ p1 <- data_genetics %>%
 
 p2<- data_genetics %>%  
   mutate(landscapeID = landscapeID[1], Generation = 1) %>% 
-  select(landscapeID,is.front,Location,Treatment,Generation) %>% 
+  select(landscapeID,is.edge,Location,Treatment,Generation) %>% 
   distinct() %>% 
   add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
   mutate(.value=10^(.value)) %>% 
-  filter(is.front!=0) %>%
+  filter(is.edge!=0) %>%
   ungroup() %>% 
   ggplot()+
-  geom_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
-  scale_fill_manual(values=frontcorePalette)+
+  stat_eye(aes(x=Location,y=.value,fill=Location),slab_alpha=0.3)+
+  scale_fill_manual(values=edgecorePalette)+
   facet_wrap(~Treatment)+
   scale_y_continuous(expression(paste("Genetic diversity decay rate  ",lambda))) +
   theme_half_open(11) +
@@ -572,8 +572,8 @@ p1/p2 +plot_annotation(tag_levels = "A") + plot_layout(guides="collect")
 
 newdata <- data_genetics %>%  
   mutate(landscapeID = landscapeID[1], Generation = 1) %>% 
-  select(landscapeID,is.front,Location,Treatment,Generation) %>% 
-  filter(is.front!=0) %>% 
+  select(landscapeID,is.edge,Location,Treatment,Generation) %>% 
+  filter(is.edge!=0) %>% 
   distinct() %>% 
   add_fitted_draws(mod_genetics,nlpar="logdecay",re_formula=NA) %>% 
   mutate(.value=10^(.value)) 
