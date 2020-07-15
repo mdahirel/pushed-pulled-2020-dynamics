@@ -15,6 +15,9 @@ csl: journal-of-animal-ecology.csl
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,message=FALSE, warning=FALSE)
+
+
+##to redo: models for popsize(push up both adapt_delta and tree_depth), and front simulation (main and ESM)
 ```
 
 ```{r packages-loading}
@@ -39,8 +42,13 @@ library(patchwork)
 
 library(tidybayes)
 library(bayesplot)
+```
 
-TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so it can also be used for simulation results
+```{r color-palettes}
+
+TRTpalette <- c("#d8b365","#5ab4ac")
+edgecorePalette <- c("#f1a340","#998ec3")
+
 ```
 
 <br/>
@@ -51,7 +59,7 @@ TRTpalette <- c("#F0E442","#009E73", "#F0E442","#CC79A7") # a 4 color palette so
 
 *Trichogramma brassicae* wasps used in the experiment were derived from hybrid populations created in 2013 by mixing parental strains sampled in 24 sites in Western Europe.  These parental strains were initially collected for a project on artificial selection and phenotype amelioration of *T. brassicae* strains for biological control. Isoline populations were then maintained under standard conditions between 2014 and 2016 (18 ± 0.5 °C, 65 ± 10% relative humidity, L:D 18:6), for approximately 20 generations. 
 
-To generate independent experimental replicates with comparable levels of initial genetic diversity, we created three genetic mixes from three isoline populations each (using nine distinct isoline populations in total). We followed the protocol from Fellous *et al.*  [-@fellousCombiningExperimentalEvolution2014] to create mixes with homogeneous genetic background (i.e. similar representation of each of the three ancestral isolines). First, we performed all possible two-by-two crosses between the three isolines. The F1 progeny of each two-by-two cross was then crossed with the third remaining isoline. The F2 individuals from these crosses were then inbred for 2 generations to favour recombination. Individuals from these F4 were then mixed all together in equal proportions to form each final genetic mix. While they did differ from each other, all three mixes had broadly similar levels of genetic diversity at the start of the experiments (**Supplementary Figure S1.1**).
+To generate independent experimental replicates with comparable levels of initial genetic diversity, and to allow for evolutionary dynamics, we created three genetic mixes from three isoline populations each (using nine distinct isoline populations in total). We followed the protocol from Fellous *et al.*  [-@fellousCombiningExperimentalEvolution2014] to create mixes with homogeneous genetic background (i.e. similar representation of each of the three ancestral isolines). First, we performed all possible two-by-two crosses between the three isolines. The F1 progeny of each two-by-two cross was then crossed with the third remaining isoline. The F2 individuals from these crosses were then inbred for 2 generations to favour recombination. Individuals from these F4 were then mixed all together in equal proportions to form each final genetic mix. While they did differ from each other, all three mixes had broadly similar levels of genetic diversity at the start of the experiments (**Supplementary Figure S1.1**).
 
 ```{r supplementary-figure-1}
 raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
@@ -75,7 +83,7 @@ data_genetics<-raw_genetics %>%
   mutate(landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep=""))
 
 ### STEP 2 isolate the genetics markers
-genmat<- df2genind(select(data_genetics,starts_with("P")),####all allelic columns start with a "P"
+genmat<- df2genind(select(data_genetics,starts_with("TB")),####all allelic columns start with a "P"
             ncode=3,
             NA.char = "000",
             ind.names=data_genetics$ID,pop=data_genetics$landscapeID) #ncode=3 bc 3 characters for one allele
@@ -85,7 +93,7 @@ data_genetics <- data_genetics %>%
   group_by(landscapeID) %>% 
   mutate(Nsampled = length(Location))%>%
   ungroup() %>% 
-  select(-starts_with("P"), -ID) %>% 
+  select(-starts_with("TB"), -ID) %>% 
   distinct() %>% 
   inner_join(
     tibble(Hexp=Hs(genmat),landscapeID=names(Hs(genmat)))
@@ -131,7 +139,6 @@ data_validate<- raw_dynamics %>%
 ```
 
 ```{r model-validate}
-
 if(file.exists(here("R_output","supplementary","model_S2_computercounts.Rdata")))
   {
   load(here("R_output","supplementary","model_S2_computercounts.Rdata"))
@@ -163,7 +170,10 @@ mod_validate=brm(
 
 save(list="mod_validate",file=here("R_output","supplementary","model_S2_computercounts.Rdata"))
 }
+```
 
+
+```{r model-validatex}
 cor_latent <-posterior_samples(mod_validate) %>% select(.value=contains("cor")) %>% mean_hdi()
 
 newdata <- filter(data_validate,Macro=="MacroG3") %>% ##selecting a Macro at random, it's just for generating predictions and plots
@@ -171,13 +181,18 @@ newdata <- filter(data_validate,Macro=="MacroG3") %>% ##selecting a Macro at ran
   mutate(Neggs_obs=2,prop_para_pix=0.2,Nhosts=450) %>% 
   select(Nhosts,Peggs_est,Neggs_obs,spacetimeID,Macro) %>% 
   distinct()
+```
 
-preds <- left_join(
-  newdata %>% add_fitted_draws(mod_validate,resp="Peggsest",value="estimated",re_formula=~(1|spacetimeID)),
-  newdata %>% add_fitted_draws(mod_validate,resp="Neggsobs",value="human",re_formula=~(1|spacetimeID))
-) %>% 
-  mutate(human=human/450)
 
+```{r model-validatey}
+
+preds_obs <- newdata %>% add_fitted_draws(mod_validate,resp="Neggsobs",value="human",re_formula=~(1|spacetimeID)) %>% ungroup()
+
+preds <- newdata %>% add_fitted_draws(mod_validate,resp="Peggsest",value="estimated",re_formula=~(1|spacetimeID)) %>% ungroup() %>% 
+  mutate(human=preds_obs$human/450)
+```
+
+```{r model-validatez}
 cor_obs<-preds %>% 
   group_by(.draw) %>% 
   nest() %>% 
@@ -255,9 +270,9 @@ data_validate %>% ungroup() %>%
 
 To determine whether our experimental reduction of connectedness did limit individual movement (i.e. functional connectivity), we used data from the first generation of testing, i.e. the only time the patch of origin of all parents can be known with certainty. 
 
-We used parasitism rates to calculate for each landscape × macro the average egg location (in patches from release) and used it as a proxy of dispersal. We analysed this distance using a Beta generalised linear mixed model (dividing it by 4, the maximal possible distance, to ensure it stayed between 0 and 1). The model included a fixed effect of treatment, as well as a random effect of macro (intercept) to account for uncertainty in our estimates of parasitism and distances, more specifically for macro-level systematic biases. We additionally controlled for the total number of eggs laid in a landscape. Indeed, we expect eggs are more likely to have been laid farther in more fecund replicates, simply because the room in nearer patches is limited, rather than because of differences in connectedness. We summed patch-level parasitism rates for each landscape to obtain a measure of the total number of eggs, and included it (centred and scaled to unit SD) as a fixed effect in the model described above.
+We used parasitism rates to calculate for each landscape × macro the average egg location (in patches from release) and used it as a proxy of dispersal. We analysed this distance using a Beta generalised linear mixed model (dividing it by 4, the maximal possible distance, to ensure it stayed between 0 and 1). The model included a fixed effect of treatment, as well as a random effect of macro (intercept) to account for uncertainty in our estimates of parasitism and distances, more specifically for macro-level systematic biases.
 
-We found that released wasps did lay their eggs closer from release sites in landscapes with restricted connectedness compared to reference landscapes (**Supplementary Figure S3.1**). In addition, we confirmed higher fecundity led to higher egg-laying distances (see model summary in linked code).
+We found that released wasps did lay their eggs closer from release sites in landscapes with restricted connectedness compared to reference landscapes (**Supplementary Figure S3.1**).
 
 ```{r data-G0}
 raw_dynamics<- read_csv(here("data","Trichogramma_dynamics.csv"))
@@ -304,7 +319,7 @@ if(file.exists(here("R_output","supplementary","model_S3_initialdispersal.Rdata"
   }else
     {
 
-mod_G0 <- brm(bf(distmean/4~0+Treatment+scale_Pall+(1|Macro), 
+mod_G0 <- brm(bf(distmean/4~0+Treatment+(1|Macro), 
                  ###divided by 4 because it's the maximal possible distance possible at G0
         nlf(phi~1/invphi),
         invphi~1),
@@ -315,7 +330,7 @@ mod_G0 <- brm(bf(distmean/4~0+Treatment+scale_Pall+(1|Macro),
           set_prior("normal(0,1)",class="sd"),
           set_prior("normal(0,1)",nlpar="invphi",lb=0)
         ),
-        control=list(adapt_delta=0.99),seed=42)
+        control=list(adapt_delta=0.995),seed=42)
 
 save(list="mod_G0",file=here("R_output","supplementary","model_S3_initialdispersal.Rdata"))
 }
@@ -338,12 +353,12 @@ data_G0_avg <- data_G0 %>%
 p1 <-newdata %>% 
   add_fitted_draws(mod_G0,re_formula=NA) %>% 
   ggplot()+
-  stat_eye(aes(x=Treatment,y=.value*4,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi) +
+  stat_eye(aes(x=Treatment,y=.value*4,fill=Treatment),.width=c(0.66,0.95),slab_alpha=0.9,point_interval = mean_hdi) +
   ## we put both observed points (by macros) and the indicative averages for each each landscape
   geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
   geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
-  scale_fill_manual(values=TRTpalette[c(1,4)])+
-  #scale_colour_manual(values=TRTpalette[c(1,4)])+
+  scale_fill_manual(values=TRTpalette)+
+  scale_colour_manual(values=TRTpalette)+
   scale_x_discrete("")+
   scale_y_continuous("Mean egg-laying distance from release site (patches)",limits=c(-0.2,2.5))+
   theme_bw()
@@ -373,18 +388,15 @@ p1 + p2 + plot_layout(guides="collect",widths=c(4,1)) & theme_bw() &
 
 **Supplementary Figure S3.1.** Left: Mean egg-laying distance from release patch as a function of treatment. Colored areas: posterior distribution (assuming total fecundity fixed to its average); black dots and segments: posterior mean and 66/95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate. Right: posterior difference between the two experimental treatments.
 
-
-# S4 - 
+# S4 - Microsatellite genotyping, detailed methods
 
 ## S4.1 - Design of the microsatellite markers and multiplex PCR assay
 
-Microsatellite DNA libraries were produced following the method described in <!--REF TO ADD Malausa et al. (2011)-->. This method consists of (i) the isolation of DNA fragments containing microsatellite motifs by multiplex microsatellite enrichment (obtained via hybridisation to biotin-labelled oligonucleotides with the motifs (AG)~10~, (AC)~10~, (AAC)~8~, (AGG)~8~, (ACG)~8~, (AAG)~8~, (ACAT)~6~ and (ATCT)~6~) and (ii) the pyrosequencing of the fragments (454 GS-FLX Titanium). This protocol was applied to a sample containing DNA extracted from about 100 *Trichogramma brassicae* individuals.
+Microsatellite DNA libraries were produced following the method described in Malausa *et al.* [-@malausaHighthroughputMicrosatelliteIsolation2011]. This method consists of (i) the isolation of DNA fragments containing microsatellite motifs by multiplex microsatellite enrichment (obtained via hybridisation to biotin-labelled oligonucleotides with the motifs (AG)~10~, (AC)~10~, (AAC)~8~, (AGG)~8~, (ACG)~8~, (AAG)~8~, (ACAT)~6~ and (ATCT)~6~) and (ii) the pyrosequencing of the fragments (454 GS-FLX Titanium). This protocol was applied to a sample containing DNA extracted from about 100 *Trichogramma brassicae* individuals.
 
-The obtained DNA dataset was analyzed and primers for microsatellite amplification were designed using the QDD program <!--(Meglécz et al. 2010)-->, version 2.1. The default QDD parameters were used, except for: (i) the minimum percentage similarity of sequences used for the construction of consensus sequences was 90%, (ii) the proportion of sequences that must have the same base on the aligned site to accept it as a consensus was 0.66, (iii) the minimum length of PCR product for primer design was 80bp, (iv) the maximum length of PCR product for primer design was 500, (v) the maximum length of a primer was 32, (vi) the maximum acceptable difference between the melting temperatures of primers was 4 °C.
+The obtained DNA dataset was analyzed and primers for microsatellite amplification were designed using the QDD program [@megleczQDDUserfriendlyProgram2010], version 2.1. The default QDD parameters were used, except for: (i) the minimum percentage similarity of sequences used for the construction of consensus sequences was 90%, (ii) the proportion of sequences that must have the same base on the aligned site to accept it as a consensus was 0.66, (iii) the minimum length of PCR product for primer design was 80bp, (iv) the maximum length of PCR product for primer design was 500, (v) the maximum length of a primer was 32, (vi) the maximum acceptable difference between the melting temperatures of primers was 4 °C.
 
 Nineteen microsatellite markers were developed by testing and multiplexing part of the PCR primers selected after the QDD analysis. The main criteria for microsatellites sequences selection and primers design used were (i) the motif of the microsatellite they target, to obtain a balanced frequency of motifs, (ii) microsatellites with at least eight repeats, (iii) the size of the expected PCR products (we selected primers amplifying markers homogenously distributed in terms of size within the range 80 bp - 500 bp).
-
-Allelic richness of the markers and whether or not their allele frequencies followed the Hardy-Weinberg equilibrium was investigated by genotyping the initial pool of individuals <!-- to precise and change depending on idividuals in table-->  used in the experiment presented in this manuscript <!--(REF TO ADD Table SXX)-->.  
 
 ## S4.2 - Genotyping and microsatellites description  
 
@@ -393,9 +405,108 @@ All *T. brassicae* wasps were stored in 70% ethanol before DNA extraction. DNA w
 For microsatellite amplification, 2µl of genomic DNA were used within a 10µL final PCR reaction consisting of 5µL of the QIAGEN PCR multiplex solution, 1µL of the primer mix of the 19 primers reverse and forward (1µM each), and water. PCR conditions were as followed: initial denaturation at 95°C for 15 min; 30 cycles of denaturation (94°C, 30s), annealing (60°C, 90s) and elongation (72°C, 60s); final extension at 60°C for 30 min.
 For each individual, 1.5µL of the PCR product was mixed with 9.8µL of a mix obtained from 1mL HiDi formamide and 20µL of 500 LIZ Size Standard (Applied Biosystems). Products were then electrophoresed using an ABI PRISM 3130XL sequencer (Applied Biosystems). Finally, genotypes were scored using Gene Marker version 1.75 (SoftGenetics).
 
-**Supplementary table S4.1**: Primer pairs used for the PCR set of the multiplex panel. Population genetics statistics presented here were computed with <!--CHANGE IF DONE WITH R, the software GenePop version 3.3 REF TO ADD (Raymond & Rousset 1995, Heredity 86, 248-249)--> from the<!-- ADAPT SET full set of individuals of genetic mix 1  at the start of the experiment-->. For each of the 19 loci, the table includes: the repeat motifs in the sequence used to design primers, sequence and fluorescent dye label used for each primer, <!--number of individuals successfully genotyped, observed number of alleles, allelic size range, observed heterozygosity (HO), expected heterozygosity (HE, Nei 1978, Genetics 89, 589-590) and P-value for the exact test of Hardy–Weinberg equilibrium (HWE). Note that all loci were found to be polymorphic when analysing the whole set of wasps used in the experiment (i.e. genetic mixes 1, 2 and 3)-->. 
+All loci are polymorphic when looking at the entire dataset (Supplementary Table S4.1). Information on each marker, including allelic richness over the whole set of genotyped individuals, is presented Supplementary Table S4.1. Information about genetic diversity and whether alleles frequencies followed the Hardy-Weinberg equilibrium **at the start of the experiment** is presented Supplementary Table S4.2.
 
-<!--add supplementary table-->
+
+**Supplementary Table S4.1**: Primer pairs used for the PCR set of the multiplex panel. For each of the 19 loci, the table includes: the repeat motifs in the sequence used to design primers, sequence and fluorescent dye label used for each primer, the observed number of alleles and the allelic size range. 
+
+```{r}
+#library(tidyverse)
+library(kableExtra)
+#library(here)
+
+library(adegenet)
+
+raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"), 
+                         col_types = cols(.default=col_character())
+)
+
+data_genetics<-raw_genetics %>% 
+  mutate( ### info on variables is contained in each sample ID
+    Generation=str_extract(ID,"G0|G4|G8|G12"),
+    Mix=str_extract(ID,"_1P|_2P|_3P")
+  ) %>% 
+  mutate(
+    Generation=as.numeric(str_extract(Generation,"0|4|8|12")),
+    Mix=as.numeric(str_extract(Mix,"1|2|3"))) #%>% 
+  #filter(Generation==0)
+
+genmat<- df2genind(select(data_genetics,starts_with("TB")),####all allelic columns start with a "P"
+            ncode=3,
+            NA.char = "000", ## missing alleles
+            ind.names=data_genetics$ID,pop=data_genetics$Mix) #ncode=3 bc 3 characters for one allele
+
+#pegas::hw.test(seppop(genmat)$`1`) careful, rows with df = 0 = rows with 0 diversity, convert to NA/--
+# nAll(genmat) do allele counts and seq range on total data (some locus are monomorphic on G0 because sampling)
+# summary(genmat)$Hexp
+# summary(genmat)$Hobs
+
+test=enframe(genmat@all.names) %>% 
+  unnest(cols=value) %>% 
+  mutate(value=as.numeric(value)) %>% 
+  filter(value>0) %>% ##remove missing alleles (scored as 0s)
+  group_by(name) %>% 
+  summarise(min=min(value),max=max(value)) %>% 
+  mutate(range=paste(min,"-",max)) %>% 
+  left_join(tibble(nAll=nAll(genmat),name=names(nAll(genmat)))) %>% 
+  select(Locus = name,`number of alleles`=nAll,`Size range (bp)`=range)
+
+read_csv(here("data","Trichogramma_microsatellite_description.csv")) %>%
+  rename(Locus="locus",`Repeat motif`="motif",Forward="forward_primer",Reverse="reverse_primer",`Fluorescent dye`="dye") %>% 
+  left_join(test) %>% 
+  knitr::kable(format="html") %>%
+  kable_styling() %>% 
+  add_header_above(c(" " = 2, "Primer sequences (5'—3')" = 2, " "=3)) %>% 
+  collapse_rows(5,valign="top") ##
+```
+
+**Supplementary Table S4.2**: Population genetics statistics at the start of the experiment. At each locus described Supplementary Table S4.1, the number of individuals successfully genotyped (*N*, excluding missing alleles),the observed heterozygosity (*H~O~*), the expected heterozygosity (*H~E~*, @neiAnalysisGeneDiversity1973) and the *p*-value for the exact test of Hardy–Weinberg equilibrium were computed separately for each of the 3 genetic mixes used (Mix1, Mix2, Mix3; See Supplementary Material S1). Statistics were computed using the `adegenet` [@jombartAdegenetPackageMultivariate2008] and `pegas` [@paradisPegasPackagePopulation2010] R packages. Note that all loci were found to be polymorphic when analysing the whole set of wasps used in the experiment (See Supplementary Table S4.1).
+
+```{r}
+data_genetics<-raw_genetics %>% 
+  mutate( ### info on variables is contained in each sample ID
+    Generation=str_extract(ID,"G0|G4|G8|G12"),
+    Mix=str_extract(ID,"_1P|_2P|_3P")
+  ) %>% 
+  mutate(
+    Generation=as.numeric(str_extract(Generation,"0|4|8|12")),
+    Mix=as.numeric(str_extract(Mix,"1|2|3"))) %>% 
+  filter(Generation==0)
+
+genmat<- df2genind(select(data_genetics,starts_with("TB")),####all allelic columns start with a "P"
+            ncode=3,
+            NA.char = "000", ## missing alleles
+            ind.names=data_genetics$ID,pop=data_genetics$Mix) #ncode=3 bc 3 characters for one allele
+
+
+
+seppop(genmat) %>% 
+  map(.x = .,
+      .f=~tibble(
+    Locus= locNames(.x),
+    N=seploc(.x) %>%    ###a very convoluted way to get N because nInd(.x) doesn't account for NAs
+  map(.x=.,             ###so for each locus
+      .f=~tab(.x) %>%   ### we get the table of allelic frequencies
+        rowSums() %>%   ### we sum by individuals
+        na.omit() %>%   ### we remove the NAs
+        length()        ### we count
+  ) %>% 
+  unlist(),
+    Ho = summary(.x)$Hobs %>% round(2),
+    He = summary(.x)$Hexp %>% round(2),
+    HW = pegas::hw.test(.x)[,"Pr.exact"] %>% round(2)
+      )
+        
+        ) %>% 
+  enframe() %>% 
+  unnest(cols=c(value)) %>% 
+  rename(Mix="name")%>% 
+   mutate(HW=as.character(HW)) %>% 
+   mutate(HW=ifelse(Ho==0 & He==0,"--",HW)) %>% 
+  group_by(Locus) %>% 
+  summarise(`*N*` = paste(N,collapse=", "), `*H~O~*`=paste(Ho,collapse=", "),`*H~E~*`=paste(He,collapse=", "),`HWE *p*-value`= paste(HW,collapse=", ")) %>% 
+   kable(format="simple")
+```
 
 
 # S5 - Detailed description of models (main text)
@@ -481,7 +592,7 @@ where $V_{max}$ is both the asymptotic variance (once all patches have reached f
 
 We put the same priors on $\log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($\mathrm{Normal}(0, 1)$ and $\mathrm{Half\mbox{-}Normal}(0, 1)$, respectively), for the same reasons. We put a stronger, informative prior on $\mathrm{logit}(V_{max})$ :
 
-$$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 1) $$
+$$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 0.5) $$
 , as the expected asymptotic among-replicate variance is 0.25 for the case of a randomly distributed and randomly fixating locus with two alleles ($p(1-p)$ with $p$ = 0.5).
 
 ## S5.3 - Front velocity, experimental and simulated data
@@ -558,17 +669,21 @@ We here present posterior means and 95% credible intervals for the fixed effect 
 
 **Table S6.1** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *simulated* range expansions
 
-```{r results= 'asis'}
+```{r}
 
-library(knitr)
-load(here("R_output","model4_front_IBM.Rdata"))
+#library(tidyverse)
+#library(here)
+#library(brms)
+#library(tidybayes)
+#library(knitr)
+load(here("R_output","model3_front_IBM.Rdata"))
   
 mod_front %>%
   posterior_samples() %>%
   select(starts_with("b_")) %>%
   pivot_longer(everything()) %>%
   group_by(name) %>%
-  mean_hdi() %>%
+  mean_qi() %>%  ###TEMPORARY FIX TO AVOID MULIPART INTERVALS, FIX BACK TO QI SOON
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
   mutate(treatment=ifelse(str_detect(name,"reference"),"reference", name)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"density"),"density-dependent dispersal", treatment)) %>%
@@ -582,16 +697,17 @@ mod_front %>%
   mutate(name=c(rep("$\\log_{10}(\\lambda)$",2),rep("$\\mathrm{logit}(v_{t \\to \\infty})$",2))) %>% 
   mutate(name=paste(name,", $K$","=",K,sep="")) %>% 
   #select(parameter,name,K,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
-  select(name,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
+  select(name,reference,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
   column_to_rownames(var="name") %>% 
-  kable()
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 **Table S6.2** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *experimental* range expansions
 
 ```{r results= 'asis'}
 
-library(knitr)
+#library(knitr)
 
 load(here("R_output","model1_front_expe.Rdata"))
   
@@ -608,17 +724,18 @@ mod_front %>%
   pivot_wider(names_from=treatment,values_from = entry) %>% 
   mutate(name=c("$\\log_{10}(\\lambda)$","$\\ln(v_{t \\to \\infty})$","$\\ln(v_{t = 1})$")) %>% 
   #select(parameter,name,standard,`restricted connectedness`) %>%  #keep this select to check manually inputed names above are right
-  select(name,standard,`restricted connectedness`) %>% #keep this select() for the true final version
-  column_to_rownames(var="name") %>% 
-  kable()
+  select(name,reference,`restricted connectedness`) %>% #keep this select() for the true final version
+  column_to_rownames(var="name")  %>% 
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 ## Genetic diversity
 
 
 ```{r}
-library(knitr)
-load(here("R_output","model3_genetics_IBM.Rdata"))
+#library(knitr)
+load(here("R_output","model4_genetics_IBM.Rdata"))
 
 ```
 
@@ -637,15 +754,16 @@ mod_genetics %>%
   mutate(treatment=ifelse(str_detect(treatment,"connectedness"),"restricted connectedness", treatment)) %>%
   mutate(treatment=ifelse(str_detect(treatment,"Allee"),"weak Allee effect", treatment)) %>%
   mutate(K=ifelse(str_detect(name,"225"),225,450)) %>% 
-  mutate(location=ifelse(str_detect(name,"is.frontFALSE"),"core", "front")) %>% 
+  mutate(location=ifelse(str_detect(name,"is.frontFALSE"),"core", "edge")) %>% 
   mutate(parameter=str_split_fixed(name,"_",3)[,2]) %>% 
   select(parameter,K,treatment,location,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>% 
   mutate(name=c(rep("$\\log_{10}(\\lambda)$",4))) %>% 
   mutate(name=paste(name,", $K$","=",K,", ",location," patches",sep="")) %>% 
-  select(name,standard,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
-  column_to_rownames(var="name") %>% 
-  kable()
+  select(name,reference,`density-dependent dispersal`,`weak Allee effect`,`restricted connectedness`) %>% #keep this select() for the true final version
+  column_to_rownames(var="name")  %>% 
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 ```{r}
@@ -658,15 +776,16 @@ mod_genetics %>%
   mutate(`all treatments`=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep=""))%>% 
   mutate(name="$\\mathrm{logit}(V_{max})$") %>% 
   select(name,`all treatments`) %>% 
-  column_to_rownames(var="name") %>% 
-  kable()
+  column_to_rownames(var="name")  %>% 
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 
 **Table S6.4** Posterior means [95% credible intervals] for the model fitted to analyse genetic diversity of *experimental* range expansions
 
 ```{r}
-library(knitr)
+#library(knitr)
 
 load(here("R_output","model2_genet_expe.Rdata"))
 ```
@@ -681,11 +800,12 @@ mod_genetics %>%
   mean_hdi() %>% 
   mutate(entry=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep="")) %>% 
   mutate(treatment=ifelse(str_detect(name,"reference"),"reference", "restricted connectedness")) %>% 
-  mutate(parameter=ifelse(!str_detect(name,"is.front"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)","difference front-core in decay rate ($\\beta_{2}$)")) %>% 
+  mutate(parameter=ifelse(!str_detect(name,"is.edge"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)","difference edge-core in decay rate ($\\beta_{2}$)")) %>% 
   select(parameter,treatment,entry) %>% 
   pivot_wider(names_from=treatment,values_from = entry) %>%
-  column_to_rownames(var="parameter") %>% 
-  kable()
+  column_to_rownames(var="parameter")  %>% 
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 ```{r}
@@ -698,8 +818,9 @@ mod_genetics %>%
   mutate(`all treatments`=paste(round(value,2)," [",round(.lower,2),", ",round(.upper,2),"]",sep=""))%>% 
   mutate(name="logit of initial genetic diversity ($\\beta_{0}$)") %>% 
   select(name,`all treatments`) %>% 
-  column_to_rownames(var="name") %>% 
-  kable()
+  column_to_rownames(var="name")  %>% 
+  knitr::kable(format="html") %>%
+  kable_styling()
 ```
 
 
@@ -754,17 +875,18 @@ save(list=c("mod_propa1","mod_propa2"),file=here("R_output","supplementary","mod
 ```
 
 
-We found that the average new front population was founded by fewer individuals in reduced connectedness landscapes (**Supplementary Figure S6.1**), likely explaining why genetic diversity decayed faster, as the effective population size would also be lower. 
+We found that the average new front population was founded by fewer individuals in reduced connectedness landscapes (**Supplementary Figure S7.1**), likely explaining why genetic diversity decayed faster, as the effective population size would also be lower. 
 
 ```{r}
 tab_propa %>% 
   mutate(replicateID=replicateID[1]) %>% 
+  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
   select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa1,re_formula=NA) %>% 
   ggplot()+
-  stat_eye(aes(x=treatment,y=.value+1,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi)+ 
+  stat_eye(aes(x=treatment,y=.value+1,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.9,point_interval = mean_hdi)+ 
   scale_y_continuous("front population size at establishment (posterior mean)")+
   scale_x_discrete("landscape type")+
-  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_fill_manual(values=TRTpalette)+
   facet_wrap(~paste("K = ",K))+theme_bw()+
   theme(legend.position="none")
 
@@ -778,12 +900,13 @@ However, based on our second model, the ratio between "observed" and "expected" 
 ```{r}
 tab_propa %>% 
   mutate(replicateID=replicateID[1]) %>% 
+  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
   select(treatment,K,replicateID) %>% distinct() %>% add_fitted_draws(mod_propa2,re_formula=NA) %>% 
   ggplot()+
-  stat_eye(aes(x=treatment,y=.value,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.8,point_interval = mean_hdi)+ 
+  stat_eye(aes(x=treatment,y=.value,fill=treatment),.width=c(0.66,0.95),slab_alpha=0.9,point_interval = mean_hdi)+ 
   scale_y_continuous("size of new population, relative to deterministic expectation (posterior mean)")+
   scale_x_discrete("landscape type")+
-  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_fill_manual(values=TRTpalette)+
   facet_wrap(~paste("K = ",K))+theme_bw()+
   theme(legend.position="none")
 ```
@@ -822,7 +945,7 @@ if(file.exists(here("R_output","supplementary","model_S8_genetics_IBM.Rdata")))
   }else
     {
 prior_genetics=c(
-  set_prior("normal(-1.1,1)",nlpar=c("logitVmax")), #informative prior (logit(0.25)=-1.1 (more or less))
+  set_prior("normal(-1.1,0.5)",nlpar=c("logitVmax")), #informative prior (logit(0.25)=-1.1 (more or less))
   set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
   set_prior("normal(0,1)",nlpar="invphi",lb=0)
 )
@@ -876,7 +999,7 @@ bf_front <- bf(front~log(speed*ticks),
                family=lognormal,nl=TRUE)
 
 mod_front=brm(bf_front,
-              data=subset(data_front,ticks>0),chains=4,iter=500,
+              data=subset(data_front,ticks>0),chains=2,iter=200,
               prior=prior_front,control=list(adapt_delta=0.8,max_treedepth=10),
               seed=42)
 
@@ -916,6 +1039,8 @@ library(cowplot)
 #   geom_abline(data=thresholds,aes(intercept=0,slope=threshold_value,col=threshold_type),lty=2)
 # 
 data_front %>%
+  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>% 
   mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>%
   #filter(treatment != "reduced + DDD") %>%
   ungroup() %>%
@@ -973,6 +1098,8 @@ library(cowplot) ##temporary, check once plots are restyled
 
 
 data_genetics %>% ungroup() %>% 
+  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
+  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>% 
   mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
   #filter(treatment != "reduced + DDD") %>% 
   select(treatment,is.front,K) %>% 
@@ -988,8 +1115,7 @@ data_genetics %>% ungroup() %>%
   facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
   scale_y_continuous(name=expression(paste("genetic diversity decay rate  ",lambda)))+
   scale_x_discrete("equilibrium population size K")+
-  scale_fill_manual("Location",values=c("#E69F00","#56B4E9"))+
-  #scale_colour_manual("Location",values=c("#E69F00","#56B4E9"))+
+  scale_fill_manual("Location",values=edgecorePalette)+
   theme_half_open(11)+
   background_grid(colour.major = "grey95",colour.minor = "grey95")+
   theme(legend.position="none")
@@ -1085,7 +1211,7 @@ p1 <-newdata %>%
   ## we put both observed points (by macros) and the indicative averages for each each landscape
   #geom_point(data=data_G0,aes(x=jitteredTRT,y=distmean,col=Treatment),fill="white",pch=21,alpha=0.8)+
   #geom_point(data=data_G0_avg, aes(x=jitteredTRT,y=distmean,fill=Treatment),pch=21,size=2)+
-  scale_fill_manual(values=TRTpalette[c(1,4)])+
+  scale_fill_manual(values=TRTpalette)+
   #scale_colour_manual(values=TRTpalette[c(1,4)])+
   scale_x_discrete("")+
   scale_y_continuous("Mean population size in core patches (in % of total hosts)",limits=c(0,1))+
