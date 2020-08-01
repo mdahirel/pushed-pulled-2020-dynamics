@@ -38,12 +38,6 @@ library(adegenet)
 library(here)
 ```
 
-# TO DO
-
-Nearly everything is done and clean, but still a few things to perfect:
-- find a valid color code !!! choose colors that are colorblind AND greyscale friendly (the edge/core ones are currently NOT)
-- add title and link to preprint when available
-
 # Introduction
 
 ## Aims of project 
@@ -141,7 +135,7 @@ data_front<- raw_dynamics %>%
 #or digit-digit (patches 10 and beyond)
 #as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
   mutate(landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep=""),  #a unique replicate ID
-         Treatment = fct_recode(Treatment,`reference`="PL",`restricted connectedness`="PS")) %>% 
+         Treatment = fct_recode(Treatment,`reference`="PL",`reduced connectedness`="PS")) %>% 
   group_by(landscapeID,Mix,Treatment,Generation) %>%
   summarise(front = max(Patch)) %>% 
   ungroup() %>% 
@@ -183,7 +177,7 @@ data_genetics<-raw_genetics %>%
   mutate(Location=factor(Location),landscapeID=paste("Mix",Mix,"_Treatment",Treatment,"_Replicate",Replicate,sep="")) %>% 
   mutate(spacetimeID=paste(landscapeID,"_Generation",Generation,"_Location",Location,sep=""))%>% #unique population (landscape x patch location x time) ID
   mutate(is.edge=-0.5*(Location=="core")+0.5*(Location=="edge"), ## dummy variable to make interpreting interaction coefs easier
-         Treatment=fct_recode(Treatment,`reference`="PL",`restricted connectedness`="PS"))
+         Treatment=fct_recode(Treatment,`reference`="PL",`reduced connectedness`="PS"))
 ```
 
 Then we convert allele columns in a format that allows us to calculate expected heterozygosity (STEP 2 below) and do that (+ some tidying, STEP 3 below):
@@ -540,11 +534,12 @@ p1 <- data_genetics %>%
   mutate(.value=invlogit(.value)) %>% 
   ungroup() %>% 
   ggplot()+
-  stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.3,point_interval = mean_hdi)+
-  geom_point(data=data_genetics,aes(x=Generation+is.edge,y=Hexp,bg=Location),pch=21,size=2)+
+  stat_lineribbon(aes(x=Generation,y=.value,fill=Location),.width=c(0.66,0.95),alpha=0.4,point_interval = mean_hdi)+
+  geom_point(data=data_genetics,aes(x=Generation+is.edge,y=Hexp,bg=Location,col=Location),alpha=0.6,pch=21,size=2)+
   #alternate geom_point, to display the difference in elpd between logit student and logit normal through point size:
   #geom_point(data=data_genetics,aes(x=Generation+is.edge,y=Hexp,bg=Location,size=elpd1-elpd3),pch=21)+
   scale_fill_manual(values=edgecorePalette)+
+  scale_colour_manual(values=edgecorePalette)+
   scale_y_continuous(name = expression(paste("Genetic diversity  ", italic(H),sep=" "))) +
   scale_x_continuous(name = "Generations since start") +
   facet_wrap(~Treatment) + 
