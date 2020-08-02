@@ -1,0 +1,3 @@
+If you run the supplementary material `R` script for the first time, models and some other time-consuming outputs will be saved as `RData` files here to be reused as needed, saving you some time later (you can bypass this behaviour to re-run models manually if you want; see code for details).
+
+If you want to re-knit the supplementary material `html` document, I'd advise you to first run each model and save them, and then knit once you have everything, since it may take one or two days to get every output
