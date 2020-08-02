@@ -3,7 +3,7 @@
 
 #### 
 
-\[!\[DOI\](https://zenodo.org/badge/DOI/10.5281/zenodo.3969988.svg)\](https://doi.org/10.5281/zenodo.3969988)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3969988.svg)](https://doi.org/10.5281/zenodo.3969988)
 
  This repo contains all data and code needed to re-do the analyses and figures in our manuscript
 
