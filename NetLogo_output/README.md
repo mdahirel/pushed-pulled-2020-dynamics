@@ -1,0 +1,1 @@
+Contains the output of the second `R` script, the one running the `Netlogo` model. By default, contains the `csv` files used in the actual manuscript; if the script is re-run, they will be written over (with of course no difference if the script is re-run with no changes).
