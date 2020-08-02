@@ -1,7 +1,8 @@
 ;;Individual-based model aiming to study population dynamics, adaptive and neutral evolution during pushed vs pulled range expansions
 ;;
-;;first NetLogo version: June 2019
+;;first NetLogo version: June 2019 , current version: March 2020
 ;;authors : Maxime Dahirel (Netlogo version + extension) / Marjorie Haond (initial MatLab model)
+;; Netlogo version: 6.1.1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;PART 1: define patch and individual variables
@@ -33,7 +34,7 @@ turtles-own [
 
 patches-own [
   carrying_capacity ;; carrying_capacity of the patch, regulation happens by making growth rate fall below 0 if population size > carrying capacity
-  population_size   ;; current population size (actualised frequently through life cycle, as up to date values needed quiote often)
+  population_size   ;; current population size (actualised frequently through life cycle, as up to date values needed quite often)
   N_predispersal    ;; adult population size right before the dispersal phase
   N_postdispersal   ;; adult population size after the dispersal phase
   N_allele0         ;; (post-dispersal phase) number of adults with neutral_locus = 0
@@ -57,8 +58,9 @@ end
 
 to define-landscape
   set-patch-size 3 ;; graphical argument if NetLogo GUI used
-  resize-world 0 300 0 0 ;;generate the correct landscape size ( xmin xmax ymin ymax) (xmin and y min always <= 0 , ymax and xmax always >=0 and always = 0 if 1D landscapes)
-  ;;(0 = initial patch, if xmin <0 individuals can move in both direction from release sites, creating two non-independent fronts. To avoid, as it makes data analyses harder after)
+  resize-world 0 300 0 0 ;;generate the correct landscape size ( xmin xmax ymin ymax) ymax = ymin = 0 for 1D landscapes
+  ;;(0 = initial patch, if xmin <0 individuals can move in both direction from release sites, creating two non-independent fronts.
+  ;;To avoid, as it makes data analyses harder after)
   ask patches [set pcolor black] ;; graphical argument if NetLogo GUI used (patches will become whiter as population size increases)
 end
 
@@ -445,7 +447,7 @@ Individuals then live the following life cycle:
 -once adults, they disperse or not based on their dispersal-density reaction norm and current patch population size
 
 -they reproduce clonally and transmit their neutral allele (and in the evolutionary setting trait alleles to offspring
-the fecundity formula directly gives the number of offspring post-competition and accounting for Allee effects in one step, to avoid creating individuals that would then be killed
+the fecundity formula directly gives the number of offspring post-competition and accounting for Allee effects in one step, to avoid wasting computing power by creating individuals that would then be killed
 
 -they die
 
@@ -520,6 +522,7 @@ Invasions in 2D space
 (a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
 
 written by Maxime Dahirel, from an initial Matlab model by Marjorie Haond
+DOI: https://doi.org/10.5281/zenodo.3702252
 @#$#@#$#@
 default
 true
@@ -826,7 +829,7 @@ false
 Polygon -7500403 true true 270 75 225 30 30 225 75 270
 Polygon -7500403 true true 30 75 75 30 270 225 225 270
 @#$#@#$#@
-NetLogo 6.1.0
+NetLogo 6.1.1
 @#$#@#$#@
 @#$#@#$#@
 @#$#@#$#@
