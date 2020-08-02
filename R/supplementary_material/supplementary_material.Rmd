@@ -50,7 +50,7 @@ edgecorePalette <- c("#f1a340","#998ec3")
 
 <br/>
 <br/>
-**Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, is available on GitHub (**LINK TO ADD!!!**) and Zenodo (**DOI TO ADD**).
+**Note: ** The full code for the following document and the analyses it describes, as well as for all analyses described in the main text, is available on GitHub [here](https://github.com/mdahirel/pushed-pulled-2020-dynamics) and Zenodo [here](https://doi.org/10.5281/zenodo.3969988).
 
 # S1 - Creation of genetic lines
 
