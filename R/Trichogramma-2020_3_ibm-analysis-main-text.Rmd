@@ -1,7 +1,7 @@
 ---
 title: 'Trichogramma range expansions (genetics and dynamics): 3- individual-based model, analysis (main text)'
 author: "Maxime Dahirel"
-date: "31/03/2020"
+date:
 output: 
   html_document:
     theme: yeti
@@ -12,13 +12,12 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE, eval = FALSE)
 ```
 
-```{r load-packages, warning = FALSE, message = FALSE}
-library(arm)  #for invlogit
+```{r load-packages}
+library(arm) # for invlogit
 
 library(tidyverse)
 
@@ -26,9 +25,7 @@ library(rstan)
 rstan_options(auto_write = TRUE)
 options(mc.cores = 2)
 library(brms)
-
 library(bayesplot)
-
 library(tidybayes)
 
 library(cowplot)
@@ -50,7 +47,7 @@ Pushed expansion waves are generated when spread is positively density-dependent
 We simulated a total of 1000 range expansions using Netlogo (2 equilibrium population sizes x 5 scenarios), let's import them:
 
 ```{r importing-data}
-data <- read_csv(file=here("NetLogo_output/model-output.csv"))
+data <- read_csv(file = here("NetLogo_output/model-output.csv"))
 ```
 (NB: the fifth scenario is only used in Supplementary Material, but was simulated at the same time as the others so is in the same dataset)
 
@@ -86,38 +83,39 @@ This dataset contains the following variables (see script 2 for how they were ob
 We here simply (1) remove the core patches, (2) remove the fifth treatment (3) do some renaming:
 
 ```{r data-front}
-data_front <- data %>% 
-  filter(is.front == TRUE) %>% 
-  mutate(front=pxcor) %>% 
-  mutate(K=factor(K)) %>% 
-  filter(treatment!="reduced + DDD") ##supplementary material-only treatment, simulated at same time as others for convenience
+data_front <- data %>%
+  filter(is.front == TRUE) %>%
+  mutate(front = pxcor) %>%
+  mutate(K = factor(K)) %>%
+  filter(treatment != "reduced + DDD") ## supplementary material-only treatment, simulated at same time as others for convenience
 # remove from main analysis
 ```
 
 
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
 
-The situation here is bit more complex. We can't simply use the hetezygosity per patch as in the experimental dataset, because there are many zeroes:
+The situation here is bit more complex. We can't simply use the heterozygosity per patch as in the experimental dataset, because there are many zeroes:
 ```{r data-genetics1}
-#not shown
-#ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
-###lots of zero, can't use
+# not shown
+# ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
+### lots of zero, can't use
 ```
 and zeroes don't work well with the stat methods we want to use.
 
 Fortunately, there is a way around this by using the among replicates variance in allelic frequencies rather than heterozygosity (see Gandhi et al. 2019 PNAS)
 ```{r data-genetics2}
-####we'll use method variance in fraction (gandhi 2019 pnas).
-data_genetics <- data %>% 
-  group_by(ticks,treatment,is.front,K) %>% # we group by "type" of patch and generation
-  summarise(varP1=var(P1),varP0=var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
-  mutate(K=factor(K)) %>% 
-  filter(treatment!="reduced + DDD") ##supplementary material-only treatment, simulated at same time as others for convenience
+#### we'll use method variance in fraction (gandhi 2019 pnas).
+data_genetics <- data %>%
+  group_by(ticks, treatment, is.front, K) %>% # we group by "type" of patch and generation
+  summarise(varP1 = var(P1), varP0 = var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
+  mutate(K = factor(K)) %>%
+  filter(treatment != "reduced + DDD") ## supplementary material-only treatment, simulated at same time as others for convenience
 # remove from main analysis
 ```
 
 Now we have everything we need, we can fit some models! (see manuscript for details)
 
+## Data analysis
 
 ### Dataset front: speed of the advancing range expansions
 
@@ -125,46 +123,47 @@ Like in script 1, we here assume each front initially advances at a speed that m
 
 ```{r model-front-setup}
 prior_front <- c(
-  #set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"), #prior not needed because we fix start speed to 1
-  set_prior("normal(0,1.5)",nlpar="logitspeedasym",class="b"),
-  set_prior("normal(0,1)",nlpar="lograte",class="b"),
-  set_prior("normal(0,1)",nlpar="logitspeedasym",class="sd"),
-  set_prior("normal(0,1)",nlpar="lograte",class="sd"),
-  set_prior("normal(0,1)",class="sigma"),
-  set_prior("lkj(2)",class="cor")
+  # set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"), #prior not needed because we fix start speed to 1
+  set_prior("normal(0,1.5)", nlpar = "logitspeedasym", class = "b"),
+  set_prior("normal(0,1)", nlpar = "lograte", class = "b"),
+  set_prior("normal(0,1)", nlpar = "logitspeedasym", class = "sd"),
+  set_prior("normal(0,1)", nlpar = "lograte", class = "sd"),
+  set_prior("normal(0,1)", class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
 )
 
-bf_front <- bf(front~log(speed*ticks),
-               nlf(speed~speedasym+(1-speedasym)*exp(-((ticks-1)/10)*rate)), ##speedstart forced to 1
-               nlf(rate~10^(lograte)),
-               nlf(speedasym~inv_logit(logitspeedasym)),
-               logitspeedasym~0+treatment:K+(1|1|replicateID),
-               lograte~0+treatment:K+(1|1|replicateID),
-               family=lognormal,nl=TRUE)
+bf_front <- bf(front ~ log(speed * ticks),
+  nlf(speed ~ speedasym + (1 - speedasym) * exp(-((ticks - 1) / 10) * rate)), ## speedstart forced to 1
+  nlf(rate ~ 10^(lograte)),
+  nlf(speedasym ~ inv_logit(logitspeedasym)),
+  logitspeedasym ~ 0 + treatment:K + (1 | 1 | replicateID),
+  lograte ~ 0 + treatment:K + (1 | 1 | replicateID),
+  family = lognormal, nl = TRUE
+)
 ```
 (the division of `ticks` by 10 is just a rescaling trick to make convergence of the `rate` parameter faster)
-(to save computing time, we are also only using every 5th `tick` to fit the model:)
+
+To save computing time (given the very large dataset), we are also only using every 5th `tick` to fit the model (it's trivial to see this has little to no effect on predictive success, using e.g. `bayes_R2` to compare success on in-model and out-of-model data):
 
 ```{r model-front}
 
-data_front_part <- data_front %>% filter( (ticks %% 5) == 0 )
+data_front_part <- data_front %>% filter((ticks %% 5) == 0)
 
-if(file.exists(here("R_output","model3_front_IBM.Rdata")))
-  {
-  load(here("R_output","model3_front_IBM.Rdata"))
-  }else
-    {
-mod_front=brm(bf_front,
-              data=data_front_part,
-              chains=4,iter=6000,warmup=2000,
-              prior=prior_front,
-              seed=42)
+if (file.exists(here("R_output", "model3_front_IBM.Rdata"))) {
+  load(here("R_output", "model3_front_IBM.Rdata"))
+} else {
+  mod_front <- brm(bf_front,
+    data = data_front_part,
+    chains = 4, iter = 6000, warmup = 2000,
+    prior = prior_front,
+    seed = 42
+  )
 
-save(list="mod_front",file=here("R_output","model3_front_IBM.Rdata"))
+  save(list = "mod_front", file = here("R_output", "model3_front_IBM.Rdata"))
 }
 ```
 
-```{r summary-model-front, eval = FALSE}
+```{r summary-model-front}
 
 summary(mod_front)
 
@@ -174,8 +173,8 @@ summary_front <- mod_front %>%
   select(starts_with(c("Intercept", "b_", "sd_", "cor_", "sigma"))) %>%
   pivot_longer(everything()) %>%
   group_by(name) %>%
-  mean_hdi() %>% 
-  print(n=Inf)
+  mean_hdi() %>%
+  print(n = Inf)
 
 mcmc_rank_overlay(mod_front, pars = summary_front$name)
 ```
@@ -185,41 +184,40 @@ mcmc_rank_overlay(mod_front, pars = summary_front$name)
 Our model here is based on Gandhi et al 2019 PNAS and assumes genetic among replicate variance increases through time until reaching a plateau only determined by the initial allelic frequencies. The "decay" rate parameter is our parameter of interest here, and because we *know* the (average) initial allelic frequencies, we can put a more informative prior on the plateau parameter:
 
 ```{r}
-if(file.exists(here("R_output","model4_genetics_IBM.Rdata")))
-  {
-  load(here("R_output","model4_genetics_IBM.Rdata"))
-  }else
-    {
-prior_genetics=c(
-  set_prior("normal(-1.1,0.5)",nlpar=c("logitVmax")), #informative prior (logit(0.25)=-1.10 (rounded to 2 decimals))
-  # we *know* Vmax should on average be 0.25 (see main text), but rather than fix it
-  # we want a prior with some wiggle room because of the effects of sampling variation (we don't know how pronounced they may be)
-  # this prior is broad, counts values of Vmax between 0.1 and 0.4-0.5 as plausible
-  #note that results are insensitive to changing that prior for a less informative one
-  set_prior("normal(0,1)",nlpar=c("logdecay"),class="b"),
-  set_prior("normal(0,1)",nlpar="invphi",lb=0)
-)
+if (file.exists(here("R_output", "model4_genetics_IBM.Rdata"))) {
+  load(here("R_output", "model4_genetics_IBM.Rdata"))
+} else {
+  prior_genetics <- c(
+    set_prior("normal(-1.1,0.5)", nlpar = c("logitVmax")), # informative prior (logit(0.25)=-1.10 (rounded to 2 decimals))
+    # we *know* Vmax should on average be 0.25 (see main text), but rather than fix it
+    # we want a prior with some wiggle room because of the effects of sampling variation (we don't know how pronounced they may be)
+    # this prior is broad, counts values of Vmax between 0.1 and 0.4-0.5 as plausible
+    # note that results are insensitive to changing that prior for a less informative one
+    set_prior("normal(0,1)", nlpar = c("logdecay"), class = "b"),
+    set_prior("normal(0,1)", nlpar = "invphi", lb = 0)
+  )
 
-bf_genetics <- bf(varP1~logit(Vmax*(1-exp(-(ticks)*decay))),
-                  nlf(Vmax~inv_logit(logitVmax)),
-                  nlf(decay~10^(logdecay)),
-                  logitVmax~1,
-                  logdecay~0+treatment:is.front:K,
-                  nlf(phi~1/invphi),
-                  invphi~1,
-                  family=Beta(link_phi="identity"),nl=TRUE)
+  bf_genetics <- bf(varP1 ~ logit(Vmax * (1 - exp(-(ticks) * decay))),
+    nlf(Vmax ~ inv_logit(logitVmax)),
+    nlf(decay ~ 10^(logdecay)),
+    logitVmax ~ 1,
+    logdecay ~ 0 + treatment:is.front:K,
+    nlf(phi ~ 1 / invphi),
+    invphi ~ 1,
+    family = Beta(link_phi = "identity"), nl = TRUE
+  )
 
-mod_genetics=brm(bf_genetics,
-                 data=data_genetics,
-                 iter=4000, warmup=2000,chains=4,
-                 prior=prior_genetics,seed=42
-)
+  mod_genetics <- brm(bf_genetics,
+    data = data_genetics,
+    iter = 4000, warmup = 2000, chains = 4,
+    prior = prior_genetics, seed = 42
+  )
 
-save(list="mod_genetics",file=here("R_output","model4_genetics_IBM.Rdata"))
+  save(list = "mod_genetics", file = here("R_output", "model4_genetics_IBM.Rdata"))
 }
 ```
 
-```{r summary-model-genetics, eval = FALSE}
+```{r summary-model-genetics}
 summary(mod_genetics)
 
 summary_genetics <- mod_genetics %>%
@@ -227,125 +225,142 @@ summary_genetics <- mod_genetics %>%
   select(starts_with(c("b_"))) %>%
   pivot_longer(everything()) %>%
   group_by(name) %>%
-  mean_hdi() %>% 
-  print(n=Inf)
+  mean_hdi() %>%
+  print(n = Inf)
 
 mcmc_rank_overlay(mod_genetics, pars = summary_genetics$name)
 
-###prediction intervals around each point
-ppc_ribbon(yrep=predict(mod_genetics,summary=FALSE),
-           x=rank(predict(mod_genetics)[,1]),
-           y=data_genetics$varP1,
-           prob = 0.5, prob_outer=0.95)
+### prediction intervals around each point
+ppc_ribbon(
+  yrep = predict(mod_genetics, summary = FALSE),
+  x = rank(predict(mod_genetics)[, 1]),
+  y = data_genetics$varP1,
+  prob = 0.5, prob_outer = 0.95
+)
 ```
 
-## Postprocessing : plots
+## Postprocessing : plots and summaries
 
-```{r color-palettes, eval=FALSE}
+```{r color-palettes}
 
-TRTpalette <- c("#d8b365","#5ab4ac")
-edgecorePalette <- c("#f1a340","#998ec3") # 3 colors, for core, front and origin (black) patches
-
+TRTpalette <- c("#d8b365", "#5ab4ac")
+edgecorePalette <- c("#f1a340", "#998ec3")
 ```
 
 ### Dataset front: speed of the advancing range expansions
 
-```{r}
+First let's make a file that contains the speeds at which we move from one type of expansion to the other, for each treatment
 
-thresholds <- data_front %>% 
-  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>% 
-  mutate(threshold_pushed=(3/(2*sqrt(2)))*v_f) %>% 
-  select(K,treatment,v_f,threshold_pushed) %>% 
-  distinct() %>% 
-  pivot_longer(cols=c(v_f,threshold_pushed),
-               values_to = "threshold_value",names_to = "threshold_type") %>% 
-  mutate(threshold_type=fct_recode(threshold_type,vF="v_f",
-                                   `3/(2 x sqrt(2))) x vF`="threshold_pushed"))
+```{r velocity-thresholds}
+thresholds <- data_front %>%
+  mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  mutate(threshold_pushed = (3 / (2 * sqrt(2))) * v_f) %>%
+  select(K, treatment, v_f, threshold_pushed) %>%
+  distinct() %>%
+  pivot_longer(
+    cols = c(v_f, threshold_pushed),
+    values_to = "threshold_value", names_to = "threshold_type"
+  ) %>%
+  mutate(threshold_type = fct_recode(threshold_type,
+    vF = "v_f",
+    `3/(2 x sqrt(2))) x vF` = "threshold_pushed"
+  ))
+```
 
+then do the figure itself:
+
+```{r figure-velocity}
 data_front %>%
-  ungroup() %>% 
-  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>% 
-  mutate(replicateID= replicateID[1],ticks=1) %>% 
-  select(treatment,ticks,replicateID,K) %>% 
+  ungroup() %>%
+  mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  mutate(replicateID = replicateID[1], ticks = 1) %>%
+  select(treatment, ticks, replicateID, K) %>%
   distinct() %>%
-  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>% 
-  mutate(.value=invlogit(.value)) %>% 
-  ungroup() %>% 
-  ggplot()+
-  geom_hline(data=thresholds,aes(yintercept = threshold_value,lty=threshold_type))+
-  stat_eye(aes(x=factor(K),group=K,y=.value),normalize="xy")+
-  scale_y_continuous("Asymptotic velocity (posterior)") +
-  scale_x_discrete("equilibrium population size K")+
-  scale_linetype_discrete(name="",
-                       labels=c(
-                         expression(paste(frac(3,2*sqrt(2)), "  ", italic(v[F]))),
-                         expression(italic(v[F])))
-                       )+
-  facet_grid(cols=vars(treatment))+
-  theme_half_open(11)+
-  background_grid(colour.major = "grey95",colour.minor = "grey95")+
-  theme(legend.title=element_blank(),legend.position = c(0.86, 0.3),legend.background = element_rect(fill = "white",colour = "black"),legend.margin=margin(t=2,r=2,l=2,b=2))
+  add_fitted_draws(mod_front, nlpar = "logitspeedasym", re_formula = NA) %>%
+  mutate(.value = invlogit(.value)) %>%
+  ungroup() %>%
+  ggplot() +
+  geom_hline(data = thresholds, aes(yintercept = threshold_value, lty = threshold_type)) +
+  stat_eye(aes(x = factor(K), group = K, y = .value), normalize = "xy") +
+  scale_y_continuous("Mean asymptotic velocity (posterior)") +
+  scale_x_discrete("equilibrium population size K") +
+  scale_linetype_discrete(
+    name = "",
+    labels = c(
+      expression(paste(frac(3, 2 * sqrt(2)), "  ", italic(v[F]))),
+      expression(italic(v[F]))
+    )
+  ) +
+  facet_grid(cols = vars(treatment)) +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95") +
+  theme(legend.title = element_blank(), legend.position = c(0.86, 0.3), legend.background = element_rect(fill = "white", colour = "black"), legend.margin = margin(t = 2, r = 2, l = 2, b = 2))
+```
 
-data_front %>% 
-  ungroup() %>% 
-  mutate(replicateID= replicateID[1],ticks=1) %>% 
-  select(treatment,ticks,replicateID,K,v_f) %>% 
+Finally, let's look at the average velocity ratios for each scenario:
+
+```{r velocity-ratios}
+data_front %>%
+  ungroup() %>%
+  mutate(replicateID = replicateID[1], ticks = 1) %>%
+  select(treatment, ticks, replicateID, K, v_f) %>%
   distinct() %>%
-  add_fitted_draws(mod_front,nlpar="logitspeedasym",re_formula=NA) %>%
-  mutate(.value=invlogit(.value))%>% 
-  mutate(.value=.value/v_f) %>% 
+  add_fitted_draws(mod_front, nlpar = "logitspeedasym", re_formula = NA) %>%
+  mutate(.value = invlogit(.value)) %>%
+  mutate(.value = .value / v_f) %>%
   mean_hdi()
 ```
 
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
 
-```{r}
-data_genetics %>% ungroup() %>% 
-  mutate(treatment=relevel(factor(treatment),ref="reference")) %>% 
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>% 
-  #filter(treatment != "reduced + DDD") %>% 
-  select(treatment,is.front,K) %>% 
-  mutate(Location=factor(is.front)) %>% 
-  mutate(Location=fct_recode(Location,edge="TRUE",core="FALSE")) %>% 
-  mutate(Location=fct_relevel(Location,"edge","core")) %>% 
-  distinct() %>% 
-  mutate(ticks=1) %>% 
-  add_fitted_draws(mod_genetics,re_formula = NA,nlpar="logdecay") %>% 
-  mutate(.value=10^(.value)) %>% 
-  ungroup() %>% 
-  ggplot()+
-  stat_eye(aes(x=K,fill=Location,group=Location,y=.value),position="dodge",normalize="xy")+
-  facet_grid(cols=vars(treatment),rows=vars(Location),scales="free_y")+
-  scale_y_continuous(name=expression(paste("genetic diversity decay rate  ",lambda)))+
-  scale_x_discrete("equilibrium population size K")+
-  scale_fill_manual("Location",values=edgecorePalette)+
-  #scale_colour_manual("Location",values=c("#E69F00","#56B4E9"))+
-  theme_half_open(11)+
-  background_grid(colour.major = "grey95",colour.minor = "grey95")
+```{r figure-genetics}
+data_genetics %>%
+  ungroup() %>%
+  mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  # filter(treatment != "reduced + DDD") %>%
+  select(treatment, is.front, K) %>%
+  mutate(Location = factor(is.front)) %>%
+  mutate(Location = fct_recode(Location, edge = "TRUE", core = "FALSE")) %>%
+  mutate(Location = fct_relevel(Location, "edge", "core")) %>%
+  distinct() %>%
+  mutate(ticks = 1) %>%
+  add_fitted_draws(mod_genetics, re_formula = NA, nlpar = "logdecay") %>%
+  mutate(.value = 10^(.value)) %>%
+  ungroup() %>%
+  ggplot() +
+  stat_eye(aes(x = K, fill = Location, group = Location, y = .value), position = "dodge", normalize = "xy") +
+  facet_grid(cols = vars(treatment), rows = vars(Location), scales = "free_y") +
+  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda))) +
+  scale_x_discrete("equilibrium population size K") +
+  scale_fill_manual("Location", values = edgecorePalette) +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
 ```
 
 ### Figure 6 of main text
 
-```{r}
-tibble(treatment=c("reference","restricted connectedness"),
-       xstart=c(0.5,2),
-       xend=c(1.5,3),
-       expected=c(0.2,0.1),
-       observed=c(0.22,0.15)) %>%
-ggplot()+
-  geom_point(aes(x=xstart+0.5,y=observed,fill=treatment),size=5,pch=21)+
-  scale_fill_manual("Treatment",values=TRTpalette)+
-  geom_segment(aes(x=xstart,xend=xend,y=expected,yend=expected),lty=2,col="grey30")+
-  geom_segment(aes(y=0.22,yend=0.12,x=1.6,xend=1.6),arrow=arrow(type = "closed",length = unit(0.03, "npc")))+
-  geom_segment(aes(y=0.12,yend=0.15,x=1.8,xend=1.8),arrow=arrow(type = "closed",length = unit(0.03, "npc")))+
-  annotate("label", x = c(1.45,1.95), y = c(0.13,0.13), label = c(1,2),col="grey30")+
-  scale_y_continuous(name="Average size of newly founded populations",breaks=NULL,lim=c(0,0.25))+
-  annotate("text", x = 3.5, y = 0.1, label = "expectation with \n deterministic dispersal",col="grey30")+
-  scale_x_continuous("",lim=c(0.5,4),breaks=c(1,2.5),labels=c("reference","reduced connectedness"))+
-  theme_half_open(11)+
-  #background_grid(colour.major = "grey95",colour.minor = "grey95")+
-  theme(legend.position="none")
+```{r figure6}
+tibble(
+  treatment = c("reference", "restricted connectedness"),
+  xstart = c(0.5, 2),
+  xend = c(1.5, 3),
+  expected = c(0.2, 0.1),
+  observed = c(0.22, 0.15)
+) %>%
+  ggplot() +
+  geom_point(aes(x = xstart + 0.5, y = observed, fill = treatment), size = 5, pch = 21) +
+  scale_fill_manual("Treatment", values = TRTpalette) +
+  geom_segment(aes(x = xstart, xend = xend, y = expected, yend = expected), lty = 2, col = "grey30") +
+  geom_segment(aes(y = 0.22, yend = 0.12, x = 1.6, xend = 1.6), arrow = arrow(type = "closed", length = unit(0.03, "npc"))) +
+  geom_segment(aes(y = 0.12, yend = 0.15, x = 1.8, xend = 1.8), arrow = arrow(type = "closed", length = unit(0.03, "npc"))) +
+  annotate("label", x = c(1.45, 1.95), y = c(0.13, 0.13), label = c(1, 2), col = "grey30") +
+  scale_y_continuous(name = "Average size of newly founded populations", breaks = NULL, lim = c(0, 0.25)) +
+  annotate("text", x = 3.5, y = 0.1, label = "expectation with \n deterministic dispersal", col = "grey30") +
+  scale_x_continuous("", lim = c(0.5, 4), breaks = c(1, 2.5), labels = c("reference", "reduced connectedness")) +
+  theme_half_open(11) +
+  # background_grid(colour.major = "grey95",colour.minor = "grey95")+
+  theme(legend.position = "none")
 ```
-
