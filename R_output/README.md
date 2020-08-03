@@ -4,21 +4,23 @@ A copy of all the `R_output` folder containing all the `RData` we personally gen
 
 Feel free to download it and unzip its content to your own `R_output` folder to save you some computing time. File structure should be as follow for files to be found by the scripts:
 
-┗ 📂R_output
-  ┣ 📂supplementary
-  ┃ ┣ 📜model_S2_computercounts.Rdata
-  ┃ ┣ 📜model_S2_computercountsbymacro.Rdata
-  ┃ ┣ 📜model_S3_initialdispersal.Rdata
-  ┃ ┣ 📜model_S7_sizefront_IBM.Rdata
-  ┃ ┣ 📜model_S8_front_IBM.Rdata
-  ┃ ┣ 📜model_S8_genetics_IBM.Rdata
-  ┃ ┣ 📜model_S9_popsize.Rdata
-  ┃ ┗ 📜README.md
-  ┣ 📜loo_genet_expe.Rdata
-  ┣ 📜model1_front_expe.Rdata
-  ┣ 📜model2_genet_expe.Rdata
-  ┣ 📜model2bis_genet_expe.Rdata
-  ┣ 📜model2ter_genet_expe.Rdata
-  ┣ 📜model3_front_IBM.Rdata
-  ┣ 📜model4_genetics_IBM.Rdata
-  ┗ 📜README.md  (a.k.a. the file you are reading right now)
+```
+┗ 📂R_output  
+  ┣ 📂supplementary  
+  ┃ ┣ 📜model_S2_computercounts.Rdata  
+  ┃ ┣ 📜model_S2_computercountsbymacro.Rdata  
+  ┃ ┣ 📜model_S3_initialdispersal.Rdata  
+  ┃ ┣ 📜model_S7_sizefront_IBM.Rdata  
+  ┃ ┣ 📜model_S8_front_IBM.Rdata  
+  ┃ ┣ 📜model_S8_genetics_IBM.Rdata  
+  ┃ ┣ 📜model_S9_popsize.Rdata  
+  ┃ ┗ 📜README.md  
+  ┣ 📜loo_genet_expe.Rdata  
+  ┣ 📜model1_front_expe.Rdata  
+  ┣ 📜model2_genet_expe.Rdata  
+  ┣ 📜model2bis_genet_expe.Rdata  
+  ┣ 📜model2ter_genet_expe.Rdata  
+  ┣ 📜model3_front_IBM.Rdata  
+  ┣ 📜model4_genetics_IBM.Rdata  
+  ┗ 📜README.md  (a.k.a. the file you are reading right now)  
+```
