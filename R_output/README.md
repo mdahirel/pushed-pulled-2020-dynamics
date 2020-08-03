@@ -1,4 +1,4 @@
-If you run the first or third `R` scripts for the first time, models and some other time-consuming outputs will be saved as `RData` files here to be reused as needed, saving you some time later (you can bypass this behaviour to re-run models manually if you want; see code for details).
+If you run the `R` scripts for the first time, models and some other time-consuming outputs will be saved as `RData` files here to be reused as needed, saving you some time later (you can bypass this behaviour to re-run models manually if you want; see code for details).
 
 A copy of all the `R_output` folder containing all the `RData` we personally generated and used in the manuscript is available as a `zip` file under the "release" section of this repo (GitHub only, starting with release v1: https://github.com/mdahirel/pushed-pulled-2020-dynamics/releases )
 
