@@ -22,7 +22,7 @@ turtles-own [
   adult ;; a 0/1 flag indicating if the individual is adult (reproductive phase)
   has_reproduced ;; a 0/1 flag indicating if the individual has reproduced (individuals can only reproduce once)
   allee_thres  ;; Threshold of Allee effects (must be >=0); 0 = no Allee effect, > 1 = strong Allee effect (i.e. growth rate < 0 at low densities), between 0 and 1: weak Allee effect
-  ind_fecundity ;; (hypothetical) mean fecundity at population size = 0, *assuming no Allee effect*
+  ind_fecundity ;; (hypothetical) mean fecundity of individuals in that patch
 
   ;neutral genetic diversity
   neutral_locus ;; two possible allele values (0 ; 1). Inherited with no selection; used for analyses of changes in neutral genetic diversity
