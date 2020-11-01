@@ -54,18 +54,39 @@ We expected that (at low population sizes) reduced connectedness should lead to 
 
 ```{r proof-of-principle}
 # proof of principle that reduced dispersal restricts spread to new patches more at low N, due to properties of the binomial distribution
-expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
+plot_a <- expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
   mutate(label = if_else(N == min(N), paste("*D* = ", dispersal.rate, sep = ""), NA_character_)) %>%
   ggplot() +
   geom_line(aes(x = N, y = 1 - pbinom(0, N, dispersal.rate), col = dispersal.rate, group = dispersal.rate), size = 1.2) +
   scale_y_continuous(name = "Probability that at least one individual disperses") +
-  scale_x_log10(name = "Population size before dispersal phase", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
+  scale_x_log10(name = "", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
   scale_color_gradient(name = "Mean dispersal rate", low = "black", high = "grey60") +
   geom_textbox(aes(x = N, y = dispersal.rate, label = label), width = 0.15, box.padding = unit(c(1, 0, 1, 0), "pt"), halign = 0.5, hjust = 1, vjust = 0) +
   theme_half_open(11) +
   background_grid(colour.major = "grey95", colour.minor = "grey95") +
   theme(legend.position = "none")
 ### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
+### corollary: the lower the dispersal rate, the bigger the population needs to be to guarantee a given probability (let's say 50%) of at least one individual dispersing
+### 
+
+# we can also see that reducing dispersal rate increase its variability, another argument
+plot_b <- expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
+    mutate(label = if_else(N == min(N), paste("*D* = ", dispersal.rate, sep = ""), NA_character_)) %>%
+    ggplot() +
+    geom_line(aes(x = N, y = sqrt(dispersal.rate*(1-dispersal.rate)*N)/(N*dispersal.rate), col = dispersal.rate, group = dispersal.rate), size = 1.2) +
+    scale_y_continuous(name = "Coefficient of variation (mean number of dispersers)",limits=c(0,5)) +
+    scale_x_log10(name = "Population size before dispersal phase", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
+    scale_color_gradient(name = "Mean dispersal rate", low = "black", high = "grey60") +
+    geom_textbox(aes(x = N, y = sqrt(dispersal.rate*(1-dispersal.rate)*N)/(N*dispersal.rate), label = label), width = 0.15, box.padding = unit(c(1, 0, 1, 0), "pt"), halign = 0.5, hjust = 1, vjust = 0) +
+    theme_half_open(11) +
+    background_grid(colour.major = "grey95", colour.minor = "grey95") +
+    theme(legend.position = "none")
+
+(plot_a/plot_b) +plot_annotation(tag_levels="A")
+
+
+
+
 ```
 
 As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "reference" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.

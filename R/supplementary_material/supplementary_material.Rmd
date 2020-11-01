@@ -1,6 +1,6 @@
 ---
-title: "Supplementary Material for \"Shifts from pulled to pushed range expansions caused by reduction of landscape connectedness\" " 
-author: "Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Thibaut Malausa, Lionel Roques, Elodie Vercken (code by M. Dahirel)"
+title: "Supplementary Material for \"Shifts from pulled to pushed range expansions caused by reduction of landscape connectivity\" " 
+author: "Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Thibaut Malausa, Elodie Vercken (code by M. Dahirel)"
 date:
 output: 
   html_document:
