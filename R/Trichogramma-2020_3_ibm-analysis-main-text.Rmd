@@ -38,7 +38,7 @@ library(here)
 
 (see manuscript/preprint text, as well as scripts 1 and 2 in this folder, for more context)
 
-Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way. 
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way. 
 
 # Analysis
 
@@ -49,8 +49,6 @@ We simulated a total of 1000 range expansions using Netlogo (2 equilibrium popul
 ```{r importing-data}
 data <- read_csv(file = here("NetLogo_output/model-output.csv"))
 ```
-(NB: the fifth scenario is only used in Supplementary Material, but was simulated at the same time as the others so is in the same dataset)
-
 
 This dataset contains the following variables (see script 2 for how they were obtained):
 
@@ -86,9 +84,7 @@ We here simply (1) remove the core patches, (2) remove the fifth treatment (3) d
 data_front <- data %>%
   filter(is.front == TRUE) %>%
   mutate(front = pxcor) %>%
-  mutate(K = factor(K)) %>%
-  filter(treatment != "reduced + DDD") ## supplementary material-only treatment, simulated at same time as others for convenience
-# remove from main analysis
+  mutate(K = factor(K))
 ```
 
 
@@ -108,9 +104,7 @@ Fortunately, there is a way around this by using the among replicates variance i
 data_genetics <- data %>%
   group_by(ticks, treatment, is.front, K) %>% # we group by "type" of patch and generation
   summarise(varP1 = var(P1), varP0 = var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
-  mutate(K = factor(K)) %>%
-  filter(treatment != "reduced + DDD") ## supplementary material-only treatment, simulated at same time as others for convenience
-# remove from main analysis
+  mutate(K = factor(K))
 ```
 
 Now we have everything we need, we can fit some models! (see manuscript for details)
@@ -274,7 +268,7 @@ then do the figure itself:
 data_front %>%
   ungroup() %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
   mutate(replicateID = replicateID[1], ticks = 1) %>%
   select(treatment, ticks, replicateID, K) %>%
   distinct() %>%
@@ -344,7 +338,7 @@ data_genetics %>%
 
 ```{r figure6}
 tibble(
-  treatment = c("reference", "restricted connectedness"),
+  treatment = c("reference", "restricted connectivity"),
   xstart = c(0.5, 2),
   xend = c(1.5, 3),
   expected = c(0.2, 0.1),

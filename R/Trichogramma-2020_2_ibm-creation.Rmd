@@ -163,16 +163,14 @@ tab <- exp1_2020 %>%
   mutate(metrics.patches2 = map(metrics.patches,
     .f = ~ .x %>%
       filter(N_postdispersal > 0) %>% ## we only keep populated patches...
-      filter(pxcor == max(pxcor) | pxcor == 0) %>% ## we only keep the front one and the starting one
-      mutate(is.front = (pxcor == max(pxcor))) %>%
+      filter(pxcor == max(pxcor) | pxcor == 0) %>% ## we only keep the edge and the starting patch
+      mutate(is.edge = (pxcor == max(pxcor))) %>%
       mutate(
         Hexp = 2 * (N_allele0 / N_postdispersal) * (N_allele1 / N_postdispersal), # expected heterozygosity
         P0 = (N_allele0 / N_postdispersal),
         P1 = (N_allele1 / N_postdispersal)
       )
-  )) 
-
-tab <- tab %>%
+  )) %>%
   left_join(trt_grid) %>%
   select(-metrics.patches) %>%
   unnest(cols = c(metrics.patches2)) %>%
@@ -186,25 +184,3 @@ write_csv(tab, path = here("NetLogo_output/model-output.csv"))
 ```
 
 We can now use the `ibm-analysis` scripts to analyse the model outputs.
-
-
-Let's also save a file containing more info on population size of newly founded front patches:
-
-```{r processing-supplementary}
-
-tab_suppl <- exp1_2020 %>%
-  dplyr::select(ticks, start_allee_thres, slope_disp_mean, disp0_mean, fecundity, K, seedID = `random-seed`, metrics.patches) %>%
-  mutate(metrics.patches2 = map(metrics.patches,
-    .f = ~ .x %>%
-      filter(N_postdispersal > 0) %>% ## we only keep populated patches...
-      filter(pxcor >= (max(pxcor) - 1)) %>% ## we only keep the front one and the one behind (potential sources of front)
-      mutate(is.front = (pxcor == max(pxcor)))
-  )) %>%
-  left_join(trt_grid) %>%
-  select(-metrics.patches) %>%
-  unnest(cols = c(metrics.patches2)) %>%
-  mutate(replicateID = paste(K, treatment, seedID)) %>%
-  mutate(Location_full = paste(replicateID, pxcor, ticks))
-
-write_csv(tab_suppl, path = here("NetLogo_output/model-output_supplementary.csv"))
-```
