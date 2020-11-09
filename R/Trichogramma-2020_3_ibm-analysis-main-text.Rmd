@@ -319,7 +319,7 @@ data_front %>%
 data_genetics %>%
   ungroup() %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
   # filter(treatment != "reduced + DDD") %>%
   select(treatment, is.front, K) %>%
   mutate(Location = factor(is.front)) %>%

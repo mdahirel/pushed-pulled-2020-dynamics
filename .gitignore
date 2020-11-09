@@ -9,3 +9,5 @@ R/Trichogramma-2020_1_experiment-main-text.html
 R/Trichogramma-2020_1_experiment-main-text.html
 *.Rdata
 *.pdf
+NetLogo_output/model-output_temp.csv
+NetLogo_output/model-output_test.csv

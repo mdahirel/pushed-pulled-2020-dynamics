@@ -28,7 +28,7 @@ library(here)
 
 (see manuscript/preprint text for more context)
 
-Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way:
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way:
 
 ```{r proof-of-principle}
 # proof of principle that reduced dispersal restricts spread to new patches more at low N, due to properties of the binomial distribution
@@ -71,7 +71,7 @@ nl_object <- nl(
 ```
 
 
-Then, let's set the experimental design. There are four main treatments, plus a combination ( density-dependent dispersal + reduced connectedness) that is used in Supplementary Materials. More detailed information on parameter and parameter choices can be found in the manuscript and in the Info pane of the NetLogo file
+Then, let's set the experimental design. There are four main treatments, plus a combination ( density-dependent dispersal + reduced connectivity) that is used in Supplementary Materials. More detailed information on parameter and parameter choices can be found in the manuscript and in the Info pane of the NetLogo file
 
 ```{r design-grid}
 ### designing the experiment
@@ -79,7 +79,7 @@ trt_grid <- tibble(
   treatment = c(
     "reference", "weak Allee effect (a = 0.95)",
     "density-dependent dispersal",
-    "reduced connectedness",
+    "reduced connectivity",
     "reduced + DDD"
   ),
   start_allee_thres = c(0, 0.95, 0, 0, 0), ## weak Allee effect
@@ -144,7 +144,8 @@ And we're go for running the simulations! We set a "distinct" simulation design 
 
 set.seed(1989) ## we set a seed here to guarantee the seeds selected below are the same everytime
 nl_object@simdesign <- simdesign_distinct(nl = nl_object, nseeds = nreplicates)
-
+#nl_object@simdesign@simseeds<-1:nreplicates #or we can rewrite the nseeds here (to guarantee they are all different)
+length(unique(nl_object@simdesign@simseeds))==nreplicates #check that all generated seeds are different
 exp1_2020 <- run_nl_all(nl_object)
 
 # setsim(nl_object, "simoutput") <- exp1_2020 #not needed
@@ -169,7 +170,9 @@ tab <- exp1_2020 %>%
         P0 = (N_allele0 / N_postdispersal),
         P1 = (N_allele1 / N_postdispersal)
       )
-  )) %>%
+  )) 
+
+tab <- tab %>%
   left_join(trt_grid) %>%
   select(-metrics.patches) %>%
   unnest(cols = c(metrics.patches2)) %>%
