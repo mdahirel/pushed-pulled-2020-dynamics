@@ -78,7 +78,7 @@ This dataset contains the following variables (see script 2 for how they were ob
 
 ### Dataset front: speed of the advancing range expansions
 
-We here simply (1) remove the core patches, (2) remove the fifth treatment (3) do some renaming:
+We here simply (1) remove the core patches, (2) do some renaming:
 
 ```{r data-front}
 data_front <- data %>%
@@ -93,18 +93,24 @@ data_front <- data %>%
 The situation here is bit more complex. We can't simply use the heterozygosity per patch as in the experimental dataset, because there are many zeroes:
 ```{r data-genetics1}
 # not shown
-# ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.front+K)
+ ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.edge+K)
 ### lots of zero, can't use
 ```
 and zeroes don't work well with the stat methods we want to use.
 
-Fortunately, there is a way around this by using the among replicates variance in allelic frequencies rather than heterozygosity (see Gandhi et al. 2019 PNAS)
+Fortunately, there is a way around this by using the among replicates variance in allelic frequencies rather than using heterozygosity directly (see Gandhi et al. 2019 PNAS)
 ```{r data-genetics2}
 #### we'll use method variance in fraction (gandhi 2019 pnas).
 data_genetics <- data %>%
   group_by(ticks, treatment, is.edge, K) %>% # we group by "type" of patch and generation
   summarise(varP1 = var(P1), varP0 = var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
   mutate(K = factor(K))
+```
+
+```{r data-genetics3}
+# not shown
+ ggplot(data_genetics) +geom_line(aes(x=ticks,y=varP1,group=is.edge,col=is.edge))+facet_wrap(~treatment+K)
+### lots of zero, can't use
 ```
 
 Now we have everything we need, we can fit some models! (see manuscript for details)
@@ -116,7 +122,7 @@ Now we have everything we need, we can fit some models! (see manuscript for deta
 Like in script 1, we here assume each front initially advances at a speed that may not be the asymptotic/equilibrium speed (which is what interests us), due to various stochastic reasons, but end up converging to it more or less exponentially. Again, we here model front *location* as a function of time, rather than speed directly:
 
 ```{r model-front-setup}
-prior_front <- c(
+prior_front_IBM <- c(
   # set_prior("normal(0,1)",nlpar="logitspeedstart",class="b"), #prior not needed because we fix start speed to 1
   set_prior("normal(0,1.5)", nlpar = "logitspeedasym", class = "b"),
   set_prior("normal(0,1)", nlpar = "lograte", class = "b"),
@@ -126,7 +132,7 @@ prior_front <- c(
   set_prior("lkj(2)", class = "cor")
 )
 
-bf_front <- bf(front ~ log(speed * ticks),
+bf_front_IBM <- bf(front ~ log(speed * ticks),
   nlf(speed ~ speedasym + (1 - speedasym) * exp(-((ticks - 1) / 10) * rate)), ## speedstart forced to 1
   nlf(rate ~ 10^(lograte)),
   nlf(speedasym ~ inv_logit(logitspeedasym)),
@@ -146,23 +152,87 @@ data_front_part <- data_front %>% filter((ticks %% 5) == 0)
 if (file.exists(here("R_output", "model3_front_IBM.Rdata"))) {
   load(here("R_output", "model3_front_IBM.Rdata"))
 } else {
-  mod_front <- brm(bf_front,
+  mod_front_IBM <- brm(bf_front_IBM,
     data = data_front_part,
     chains = 4, iter = 6000, warmup = 2000,
-    prior = prior_front,
+    prior = prior_front_IBM,
     seed = 42
   )
 
-  save(list = "mod_front", file = here("R_output", "model3_front_IBM.Rdata"))
+  
+### and now the LOO-PSIS to compare this model with the "power decay" model later
+# loo_mod_front_IBM <- loo(mod_front_IBM)
+### this model is BIG, if you run into memory problem, a solution is to compute the log-likelihood for only part of the samples
+  loo_mod_front_IBM<-loo(mod_front_IBM,
+                       nsamples=4000,subset=1:4000 #,## 1/4 of posterior samples; 
+                       #comparison with power model gives same conclusions when using any of the other quarters
+                       )
+
+
+  save(list = c("mod_front_IBM","loo_mod_front_IBM"), file = here("R_output", "model3_front_IBM.Rdata"))
 }
 ```
 
+
+But we need to test the possibility that a power decay is more appropriate
+
+```{r model-front-power}
+
+
+bf_front_IBM2 <- bf(front ~ log(speed * ticks),
+               nlf(speed ~ speedasym + (1 - speedasym) * (ticks) ^(-rate)), ## speedstart forced to 1
+               nlf(rate ~ 10^(lograte)),
+               nlf(speedasym ~ inv_logit(logitspeedasym)),
+               logitspeedasym ~ 0 + treatment:K + (1 | 1 | replicateID),
+               lograte ~ 0 + treatment:K + (1 | 1 | replicateID),
+               family = lognormal, nl = TRUE
+)
+
+if (file.exists(here("R_output", "model3bis_front_power_IBM.Rdata"))) {
+  load(here("R_output", "model3bis_front_power_IBM.Rdata"))
+} else {
+
+mod_front_IBM2 <- brm(bf_front_IBM2,
+                 data = data_front_part,
+                 chains = 4, iter = 6000, warmup = 2000,
+                 prior = prior_front_IBM,
+                 seed = 42
+)
+
+  save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model3bis_front_power_IBM.Rdata"))
+}
+
+```
+
+
+```{r model-front-comparison}
+loo_compare(loo_mod_front_IBM,loo_mod_front_IBM2)
+  # there's some "problematic" observations in both, but they are rare, and using moment_match to account for them leads to very high
+  # computation time and memory requirements
+  # so we'll have to roll with them as is
+
+#but let's still split the elpd in problematic and non-problematic obs
+#to see if the difference is caused by the problematic obs
+tibble(is.problematic= loo_mod_front_IBM$pointwise[,"influence_pareto_k"]>0.7 | loo_mod_front_IBM2$pointwise[,"influence_pareto_k"]>0.7,
+       pointwise_exp =loo_mod_front_IBM$pointwise[,1],
+       pointwise_power = loo_mod_front_IBM2$pointwise[,1]) %>% 
+       group_by(is.problematic) %>% 
+       summarise(elpd_exp=sum(pointwise_exp),
+                 elpd_power=sum(pointwise_power),
+                 elpd_diff=sum(pointwise_exp-pointwise_power),
+                 se_diff=sqrt(length(pointwise_exp))*sd(pointwise_exp-pointwise_power))
+                 ## see Vehtari et al 2017 doi:10.1007/s11222-016-9696-4 for the SE formula
+#nope, the problematic obs don't cause the differences in elpd; the exponential model still has the clear advantage
+```
+
+The exponential model is better supported by far, so we go forward with it rather than the power one, for the rest of the analysis.
+
 ```{r summary-model-front}
 
-summary(mod_front)
+summary(mod_front_IBM)
 
 ### The default summary prints posterior means and quantile intervals. What if we want HD Intervals instead?
-summary_front <- mod_front %>%
+summary_front <- mod_front_IBM %>%
   posterior_samples() %>%
   select(starts_with(c("Intercept", "b_", "sd_", "cor_", "sigma"))) %>%
   pivot_longer(everything()) %>%
@@ -170,7 +240,7 @@ summary_front <- mod_front %>%
   mean_hdi() %>%
   print(n = Inf)
 
-mcmc_rank_overlay(mod_front, pars = summary_front$name)
+mcmc_rank_overlay(mod_front_IBM, pars = summary_front$name)
 ```
 
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
@@ -248,7 +318,7 @@ First let's make a file that contains the speeds at which we move from one type 
 ```{r velocity-thresholds}
 thresholds <- data_front %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced connectedness", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
   mutate(threshold_pushed = (3 / (2 * sqrt(2))) * v_f) %>%
   select(K, treatment, v_f, threshold_pushed) %>%
   distinct() %>%
@@ -272,7 +342,7 @@ data_front %>%
   mutate(replicateID = replicateID[1], ticks = 1) %>%
   select(treatment, ticks, replicateID, K) %>%
   distinct() %>%
-  add_fitted_draws(mod_front, nlpar = "logitspeedasym", re_formula = NA) %>%
+  add_fitted_draws(mod_front_IBM, nlpar = "logitspeedasym", re_formula = NA) %>%
   mutate(.value = invlogit(.value)) %>%
   ungroup() %>%
   ggplot() +

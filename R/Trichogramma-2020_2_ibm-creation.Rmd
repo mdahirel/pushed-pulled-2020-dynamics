@@ -86,7 +86,7 @@ trt_grid <- tibble(
   slope_disp_mean = c(0, 0, 1, 0, 1), ## leads to roughly doubling of dispersal between 0 and K, realistic
   disp0_mean = c(0.2, 0.2, 0.2, 0.1, 0.1) ## realistic range
 ) %>%
-  mutate(fecundity = 5) %>% ## more or less arbitrary, close to Trichogramma conditions given their sex ratio of about 50% and assuming 24 or 48 h of egg laying, as in experiments, see manuscript
+  mutate(fecundity = 5) %>% ## more or less arbitrary, but inspired by insect/Trichogramma biology, see manuscript
   expand_grid(K = c(225, 450)) %>%
   mutate(
     v_f = 2 * sqrt( ## v_f = expected velocity of "equivalent" pulled wave:
