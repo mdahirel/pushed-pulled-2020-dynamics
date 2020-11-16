@@ -50,7 +50,7 @@ To understand how the position of a range expansion on a (putative) pushed/pulle
 
 At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information (this document), and as sources of further offspring for another experiment. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
 
-We expected that (at low population sizes) reduced connectedness should lead to increased stochasticity in dispersal success and establishment difficulties:
+We expected that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties:
 
 ```{r proof-of-principle}
 # proof of principle that reduced dispersal restricts spread to new patches more at low N, due to properties of the binomial distribution
@@ -89,7 +89,7 @@ plot_b <- expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
 
 ```
 
-As a consequence, at the (relatively) low population sizes that interest us, reducing connectedness should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "reference" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
+As a consequence, at the (relatively) low population sizes that interest us, reducing connectivity should lead expansions towards "pushed" dynamics, so two types of landscapes were set up: "reference" dispersal, with two tubes connecting successive patches, and "restricted" dispersal, with only one tube. They were hypothesized to lead to __relatively__ pulled and pushed dynamics, respectively. 12 landscapes were under putatively pushed dynamics, 12 under putatively pulled dynamics.
 
 We have obtained two sources of information:
 
@@ -142,7 +142,7 @@ The `raw_genetics` dataset has two types of variables:
 
 We first play with the dynamics dataset. From the raw dataset we want to produce a `data_front` dataset, to estimate how fast the wave fronts advance
 
-We first extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (reference) and `PS` (restricted connectedness) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results. Then we use the fact that only patches with actually parasited eggs are in the raw dataset to get the front location in each landscape at each time: it is simply the location of the farthest populated patch:
+We first extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (reference) and `PS` (restricted connectivity) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results. Then we use the fact that only patches with actually parasitized eggs are in the raw dataset to get the front location in each landscape at each time: it is simply the location of the farthest populated patch:
 
 ```{r data-front}
 data_front <- raw_dynamics %>%
@@ -157,7 +157,7 @@ data_front <- raw_dynamics %>%
   # as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
   mutate(
     landscapeID = paste("Mix", Mix, "_Treatment", Treatment, "_Replicate", Replicate, sep = ""), # a unique replicate ID
-    Treatment = fct_recode(Treatment, `reference` = "PL", `reduced connectedness` = "PS")
+    Treatment = fct_recode(Treatment, `reference` = "PL", `reduced connectivity` = "PS")
   ) %>%
   group_by(landscapeID, Mix, Treatment, Generation) %>%
   summarise(front = max(Patch)) %>%
@@ -201,7 +201,7 @@ data_genetics <- raw_genetics %>%
   mutate(spacetimeID = paste(landscapeID, "_Generation", Generation, "_Location", Location, sep = "")) %>% # unique population (landscape x patch location x time) ID
   mutate(
     is.edge = -0.5 * (Location == "core") + 0.5 * (Location == "edge"), ## dummy variable to make interpreting interaction coefs easier
-    Treatment = fct_recode(Treatment, `reference` = "PL", `reduced connectedness` = "PS")
+    Treatment = fct_recode(Treatment, `reference` = "PL", `reduced connectivity` = "PS")
   )
 ```
 
@@ -275,12 +275,69 @@ if (file.exists(here("R_output", "model1_front_expe.Rdata")))
     prior = prior_front, control = list(adapt_delta = 0.95),
     seed = 42
   )
+  
 
-  save(list = "mod_front", file = here("R_output", "model1_front_expe.Rdata"))
+  loo_mod_front<-loo(mod_front,
+                     reloo=TRUE) #a few problematic obs identified, so redone with reloo
+  
+  save(list = c("mod_front","loo_mod_front"), file = here("R_output", "model1_front_expe.Rdata"))
 }
 ```
 
-Ideally, we would have used a distribution actually accounting for the discrete nature of front locations values. We could have tried to fit a Poisson model instead of a lognormal one, but that would have been trading an approximation for another: data are **under**dispersed relative to the equivalent Poisson model (you can change the family in mod_front to poisson and check this). A [Conway Maxwell Poisson]( https://discourse.mc-stan.org/t/brms-and-conway-maxwell-poisson-distribution/7368/15) may solve this, but it's not 100% implemented yet in `brms`, and may be overkill, so we stay with the lognormal approximation. Results under lognormal or Poisson are close to identical anyway.
+Ideally, we would have used a distribution actually accounting for the discrete nature of front locations values. We could have tried to fit a Poisson model instead of a lognormal one, but that would have been trading an approximation for another: data are **under**dispersed relative to the equivalent Poisson model (you can change the family in `mod_front` to poisson and check this). A [Conway Maxwell Poisson]( https://discourse.mc-stan.org/t/brms-and-conway-maxwell-poisson-distribution/7368/15) may solve this, but it's not 100% implemented yet in `brms`, and may be overkill, so we stay with the lognormal approximation. Results under lognormal or Poisson are close to identical anyway.
+
+Before we go forward, we need to check whether a power decay in the non-linear formula wouldn't be more appropriate.
+
+```{r model-front-power}
+
+if (file.exists(here("R_output", "model1bis_front_expe_power.Rdata")))
+# this if-else statement is avoid re-fitting a model when knitting Rmd file if there is already one existing in R_output
+# to override, re-run the model and re-save manually by selecting relevant code lines then knit (or delete the Rdata object)
+  {
+    load(here("R_output", "model1bis_front_expe_power.Rdata"))
+  } else {
+bf_front2 <- bf(front ~ log(speed * Generation),
+               nlf(speed ~ speedasym + (speedstart - speedasym) * (Generation)^(-rate) ),
+               nlf(rate ~ 10^(lograte)),
+               nlf(speedasym ~ exp(logspeedasym)),
+               nlf(speedstart ~ exp(logspeedstart)),
+               logspeedasym ~ 0 + Treatment + (1 | 1 | landscapeID),
+               logspeedstart ~ 0 + Treatment + (1 | 1 | landscapeID),
+               lograte ~ 0 + Treatment + (1 | 1 | landscapeID),
+               family = lognormal, nl = TRUE
+)
+
+prior_front2 <- c(
+  set_prior("normal(0,1)", nlpar = c("logspeedasym", "logspeedstart"), class = "b"),
+  set_prior("normal(0,1)", nlpar = c("lograte"), class = "b"),
+  set_prior("normal(0,1)", nlpar = c("logspeedasym", "lograte", "logspeedstart"), class = "sd"),
+  set_prior("normal(0,1)", class = "sigma"),
+  set_prior("lkj(2)", class = "cor")
+)
+
+mod_front2 <- brm(bf_front2,
+                 data = subset(data_front, Generation > 0), chains = 4, iter = 6000, warmup = 3000,
+                 prior = prior_front2, control = list(adapt_delta = 0.95, max_treedepth=15),
+                 seed = 42
+)
+
+
+  loo_mod_front2<-loo(mod_front2,
+                      reloo=TRUE) #some problematic obs identified, so redone with reloo
+  
+  save(list = c("mod_front2","loo_mod_front2"), file = here("R_output", "model1bis_front_expe_power.Rdata"))
+}
+```
+
+
+Let's compare the two:
+
+```{r comparison-model-front}
+loo_compare(loo_mod_front,loo_mod_front2)
+```
+
+There is a slight advantage to the "power decay" model, but not conclusive (difference is less than 2 SEs). Because the "exponential decay" model has a very conclusive advantage for the *simulated* data, (see script 3) let's use it for the empirical data also, for consistency. Anyway, as the reader can see by looking at the summaries, our qualitative conclusions for the empirical data don't change whether we use the power or exponential model (no detectable difference in asymptotic velocity in both cases). (The power model does tend to predict lower asymptotic speeds overall)
+
 
 ```{r summary-model-front}
 
@@ -472,14 +529,203 @@ if (file.exists(here("R_output", "loo_genet_expe.Rdata"))) {
 
 loo_compare(loo1, loo3)
 
-data_genetics$elpd1 <- loo1$pointwise[, "elpd_loo"]
-data_genetics$elpd3 <- loo3$pointwise[, "elpd_loo"]
-
-table(data_genetics$elpd1 - data_genetics$elpd3 > 0)
-
+table( (loo1$pointwise[, "elpd_loo"] - loo3$pointwise[, "elpd_loo"]) > 0)
 ## adds to evidence that logit-student is better
 #####
 ```
+
+### Relationship between *K* and *v*
+
+It has been predicted and shown that the presence of a relationship between the carrying capacity/equilibrium population density *K* and the velocity of the expansion could be indicative of pushed expansions. If we want to test that with our data we need good estimates of replicate-level asymptotic *v* and good estimates of *K*. We already have the former (see above), to have the latter we'll need to model population size. Then we can test whether the correlation is or isn't treatment-dependent by fitting a bivariate model.
+
+#### Univariate model(s) for *K*
+
+The first step is to find a satisfactory univariate model for *K*. We're going to use the population size in the starting patch (x=0) as a proxy, since we are reasonably certain it is at equilibrium density from the start, contrary to other patches:
+
+```{r pop-size-data}
+data_popsize <- raw_dynamics %>%
+  mutate(
+    Mix = as.numeric(str_sub(Image, 1, 1)),
+    Treatment = str_sub(Image, 2, 3),
+    Replicate = as.numeric(str_sub(Image, 4, 4)),
+    Patch = as.numeric(str_sub(Image, 6, 7))
+  ) %>%
+  # no further processing needed; we exploit the fact that chars 6&7 are either digit dot (patches 0 to 9)
+  # or digit-digit (patches 10 and beyond)
+  ## as.numeric() resolves both correctly (e.g; "2." and "12" become 2 and 12)
+  mutate(landscapeID = paste("Mix", Mix, "_Treatment", Treatment, "_Replicate", Replicate, sep = "")) %>% # a unique replicate ID
+  mutate(
+    Peggs_est = P / (P + H), ## proportion of pixels counted as parasitised (estimated)
+    spacetimeID = paste(landscapeID, "_Generation", Generation, "_Patch", Patch, sep = ""), # a unique ID for each replicate x patch x generation combination
+    Mix = factor(Mix)
+  ) %>%
+  mutate(Treatment = fct_recode(Treatment, `reference` = "PL", `reduced connectivity` = "PS")) %>% 
+  filter(Patch==0) %>%  #we only keep the starting patch
+  select(Treatment,landscapeID,Generation,Peggs_est,Macro) %>%
+  left_join(data_front) #add front info for the bivariate model
+```
+
+Since we measured population size as a % of "egg pixels" parasitised, we're going to start with a Beta model, where measured population size depends on treatment, among replicate variation and observer (Macro) effects:
+
+```{r}
+if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
+  load(here("R_output", "model3_popsize_expe.Rdata"))
+} else {
+  mod_popsize <- brm(bf(
+    Peggs_est ~ 0 + Treatment + (1 | Macro) + (1 | landscapeID),
+    nlf(phi ~ 1 / invphi),
+    invphi ~ 1
+  ),
+  data = data_popsize, family = Beta(link_phi = "identity"),
+  iter = 6000, warmup = 3000, chains = 4,
+  prior = c(
+    set_prior("normal(0,1.5)", class = "b"),
+    set_prior("normal(0,1)", class = "sd"),
+    set_prior("normal(0,1)", nlpar = "invphi", lb = 0)
+  ),
+  control = list(adapt_delta = 0.99, max_treedepth = 15), seed = 42
+  )
+  
+  save(list = "mod_popsize", file = here("R_output", "model3_popsize_expe.Rdata"))
+}
+
+pp_check(mod_popsize) ##look at the other pp_check types too
+```
+
+It looks like this model does not reproduce the data very well. Maybe we should do like with genetic diversity and use a student model on the logits instead?
+
+```{r}
+if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
+  load(here("R_output", "model3_popsize_expe.Rdata"))
+} else {
+  mod_popsize2 <- brm(bf(logit(Peggs_est) ~ 0 + Treatment + (1 | Macro) + (1 | landscapeID)),
+  data = data_popsize, family = student,
+  iter = 6000, warmup = 3000, chains = 4,
+  prior = c(
+    set_prior("normal(0,1.5)", class = "b"),
+    set_prior("normal(0,1)", class = "sd"),
+  set_prior("normal(0,1)", class = "sigma"),
+  set_prior("gamma(2,0.1)", class = "nu")
+  ),
+  control = list(adapt_delta = 0.99, max_treedepth = 15), seed = 42
+  )
+
+
+  save(list = "mod_popsize", file = here("R_output", "model3bis_popsize_expe.Rdata"))
+}
+
+pp_check(mod_popsize2) + lims(x=c(-5,5)) ##look at the other pp_check too
+
+```
+
+It does look much better. Still not perfect, but better
+
+```{r}
+summary(mod_popsize2)
+
+posterior_samples(mod_popsize2) %>%  ##get coefficient posteriors 
+  select(contains("b_")) %>%             ##keep only fixed effects
+  mutate(.iteration = 1:dim(.)[1]) %>% 
+  pivot_longer(cols=-.iteration) %>% 
+  compare_levels(variable="value",by="name") %>% 
+  mean_hdi()
+```
+
+The conclusion from the second model is that there is no clear evidence that treatment influences the average *K* (although there are hints of an increase with reduced connectivity that may be worth exploring in future studies _ note that the first model `mod_popsize` would conclude that this increase does exist). 
+
+
+#### A bivariate model for *K* and *v*
+
+Now we can use the model formulas previously selected for the asymptotic speed *v* and for *K*, to test whether among-replicate variation in *K* is linked to among-replicate variation in *v*, and whether this correlation depends on treatment. We can do that by refitting the previous univariate models into a bivariate model, with a slight alteration to the replicate-level random-effects for *K* and *v* to make their (co)variance treatment-specific:
+
+```{r}
+bf_popsize<- bf(logit(Peggs_est) ~ 0 + Treatment + (1 | Macro) + (1 | 1 | gr(landscapeID,by=Treatment)), family = student)
+
+bf_front <- bf(front|subset(Macro=="MacroG2") ~ log(speed * Generation),
+               ##we use subset() because the front is the same for all Macros, we don't want duplicates
+               nlf(speed ~ speedasym + (speedstart - speedasym) * exp(-(Generation - 1) * rate)),
+               nlf(rate ~ 10^(lograte)),
+               nlf(speedasym ~ exp(logspeedasym)),
+               nlf(speedstart ~ exp(logspeedstart)),
+               logspeedasym ~ 0 + Treatment + (1 | 1 | gr(landscapeID,by=Treatment)),
+               logspeedstart ~ 0 + Treatment + (1 | 1 | gr(landscapeID,by=Treatment)),
+               lograte ~ 0 + Treatment + (1 | 1 | gr(landscapeID,by=Treatment)),
+               family = lognormal, nl = TRUE
+)
+
+prior = c(
+  set_prior("normal(0,1.5)", class = "b",resp="logitPeggsest"),
+  set_prior("normal(0,1)", class = "sd",resp="logitPeggsest"),
+  set_prior("normal(0,1)", class = "sigma",resp="logitPeggsest"),
+  set_prior("gamma(2,0.1)", class = "nu",resp="logitPeggsest"),
+  set_prior("normal(0,1)", nlpar = c("logspeedasym", "logspeedstart", "lograte"), class = "b",resp="front"),
+  set_prior("normal(0,1)", nlpar = c("logspeedasym", "lograte", "logspeedstart"), class = "sd",resp="front"),
+  set_prior("normal(0,1)", class = "sigma",resp="front"),
+  set_prior("lkj(2)", class = "cor")
+)
+
+if (file.exists(here("R_output", "model4_Kv_expe.Rdata"))) {
+  load(here("R_output", "model4_Kv_expe.Rdata"))
+} else {
+
+mod_K_v <- brm(mvbf(bf_front+bf_popsize),
+                 data = data_popsize, chains = 4, iter = 6000, warmup = 3000,
+                 prior = prior, control = list(adapt_delta = 0.99, max_treedepth=15),
+                 seed = 42
+)
+
+## If Rstan is used as the backend (the default in brms as of 2020-11-15)
+## the warnings that may pop up when the model is done with the settings above can _ for once!!_ be ignored. 
+## See https://github.com/paul-buerkner/brms/issues/865
+## summary(mod_K_v) will show that all parameters of interest are fine
+## and exploration of the inner parts of the model object shows that the parameters that trigger the warnings 
+## are more or less *expected* to give NAs (see issues in link)
+## these warnings stem from choices in the Rstan interface
+## and "disappear" when CmdStanR is used instead of RStan as backend
+
+  save(list = "mod_K_v", file = here("R_output", "model4_Kv_expe.Rdata"))
+}
+```
+
+
+```{r}
+posterior_samples(mod_K_v) %>%
+  select(contains("cor_landscapeID__front_logspeedasym")) %>% 
+  select(contains("logitPeggsest")) %>% 
+  mutate(iter=1:dim(.)[1]) %>% 
+  pivot_longer(cols=-iter) %>% 
+  ggplot()+
+  stat_eye(aes(x=name,y=value),point_interval=mean_hdi)+
+  scale_y_continuous("correlation v_asym - K")
+
+
+ttt=posterior_samples(mod_K_v) %>%
+  select(contains("cor_landscapeID__front_logspeedasym")) %>% 
+  select(contains("logitPeggsest")) 
+
+hist(ttt[,1]-ttt[,2])
+
+
+###quick and dirty look at BLUP
+as.data.frame(ranef(mod_K_v)$landscapeID[,"Estimate",]) %>% 
+  rownames_to_column(var="landscapeID") %>% 
+  mutate(is.pushed=substr(landscapeID,15,16)=="PS") %>% 
+  ggplot()+
+  geom_point(aes(logitPeggsest_Intercept,front_logspeedasym_Intercept))+
+  facet_wrap(~is.pushed)
+####oooooooo pretty
+```
+
+One can check the result of the bivariate model against a quick and dirty plot of the empirical end speed versus average *K*. Visually, they seem to agree regarding the main result (no correlation in reference, correlation when connectivity is low). 
+```{r}
+data_popsize %>% 
+  group_by(Treatment,landscapeID,Macro) %>% 
+  summarise(speed=max(front)/13,K=mean(Peggs_est)) %>% 
+  ggplot()+
+  geom_point(aes(K,speed))+
+  facet_wrap(~Macro+Treatment)
+```
+The reason we couldn't simply test directly the correlations on those, and had to go through a bivariate model, is because both *v* and *K* are actually only known with (a lot of) uncertainty, which has to be accounted for (inferences based only on the figure above could have been overconfident).
 
 ## Postprocessing : plots and summaries
 

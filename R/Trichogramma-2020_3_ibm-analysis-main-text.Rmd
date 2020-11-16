@@ -209,6 +209,7 @@ mod_front_IBM2 <- brm(bf_front_IBM2,
 loo_compare(loo_mod_front_IBM,loo_mod_front_IBM2)
   # there's some "problematic" observations in both, but they are rare, and using moment_match to account for them leads to very high
   # computation time and memory requirements
+  # and there are too many problematic obs to use reloo
   # so we'll have to roll with them as is
 
 #but let's still split the elpd in problematic and non-problematic obs
