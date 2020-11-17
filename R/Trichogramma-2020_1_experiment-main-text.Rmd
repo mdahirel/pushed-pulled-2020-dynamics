@@ -59,7 +59,7 @@ plot_a <- expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
   ggplot() +
   geom_line(aes(x = N, y = 1 - pbinom(0, N, dispersal.rate), col = dispersal.rate, group = dispersal.rate), size = 1.2) +
   scale_y_continuous(name = "Probability that at least one individual disperses") +
-  scale_x_log10(name = "", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
+  scale_x_log10(name = "Population size before dispersal phase", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
   scale_color_gradient(name = "Mean dispersal rate", low = "black", high = "grey60") +
   geom_textbox(aes(x = N, y = dispersal.rate, label = label), width = 0.15, box.padding = unit(c(1, 0, 1, 0), "pt"), halign = 0.5, hjust = 1, vjust = 0) +
   theme_half_open(11) +
@@ -82,7 +82,9 @@ plot_b <- expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
     background_grid(colour.major = "grey95", colour.minor = "grey95") +
     theme(legend.position = "none")
 
-(plot_a/plot_b) +plot_annotation(tag_levels="A")
+((plot_a + 
+    scale_x_log10("", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)))/plot_b) +
+  plot_annotation(tag_levels="A")
 
 
 
@@ -108,7 +110,7 @@ raw_dynamics <- read_csv(here("data/Trichogramma_dynamics.csv"))
 raw_genetics <- read_csv(here("data/Trichogramma_genetics.csv"),
   col_types = cols(.default = col_character())
 )
-## forcing locus columns to be character otherwise some important leading zeroes are lost ( a 090090 individual _homozygote with two "090" alleles_ becomes 90090, 000000 becomes 0)
+## forcing locus columns to be character, otherwise some important leading zeroes are lost ( a 090090 individual _homozygote with two "090" alleles_ becomes 90090, 000000 becomes 0)
 ## there are other way to do it by doing it downscript (see e.g. stringr::str_pad()) but best to do it right at the outset
 ```
 
@@ -336,8 +338,9 @@ Let's compare the two:
 loo_compare(loo_mod_front,loo_mod_front2)
 ```
 
-There is a slight advantage to the "power decay" model, but not conclusive (difference is less than 2 SEs). Because the "exponential decay" model has a very conclusive advantage for the *simulated* data, (see script 3) let's use it for the empirical data also, for consistency. Anyway, as the reader can see by looking at the summaries, our qualitative conclusions for the empirical data don't change whether we use the power or exponential model (no detectable difference in asymptotic velocity in both cases). (The power model does tend to predict lower asymptotic speeds overall)
+There is a slight advantage to the "power decay" model, but not conclusive (difference is less than 2 SEs). Because the "exponential decay" model has a very conclusive advantage for the *simulated* data, (see script 3) let's use it for the empirical data also, for consistency. Anyway, as the reader can see by looking at the model summaries, our qualitative conclusions for the empirical data don't change whether we use the power or exponential model (no detectable difference in asymptotic velocity in both cases). (The power model does tend to predict lower asymptotic speeds overall)
 
+Now let's have a look at the exponential model:
 
 ```{r summary-model-front}
 
@@ -352,7 +355,7 @@ summary_front <- mod_front %>%
   mean_hdi() %>%
   print(n = Inf)
 
-mcmc_rank_overlay(mod_front, pars = summary_front$name)
+mcmc_rank_overlay(mod_front, pars = summary_front$name) # check chains have converged
 
 ### prediction intervals around each point
 ppc_ribbon(
@@ -536,7 +539,7 @@ table( (loo1$pointwise[, "elpd_loo"] - loo3$pointwise[, "elpd_loo"]) > 0)
 
 ### Relationship between *K* and *v*
 
-It has been predicted and shown that the presence of a relationship between the carrying capacity/equilibrium population density *K* and the velocity of the expansion could be indicative of pushed expansions. If we want to test that with our data we need good estimates of replicate-level asymptotic *v* and good estimates of *K*. We already have the former (see above), to have the latter we'll need to model population size. Then we can test whether the correlation is or isn't treatment-dependent by fitting a bivariate model.
+It has been predicted and shown (http://doi.org/10.1101/307322) that the presence of a relationship between the carrying capacity/equilibrium population density *K* and the velocity of the expansion could be indicative of pushed expansions. If we want to test that with our data we need good estimates of replicate-level asymptotic *v* and *K*. We already have the former (see above), to have the latter we'll need to model population size. Then we can test whether the correlation is or isn't treatment-dependent by fitting a bivariate model.
 
 #### Univariate model(s) for *K*
 
@@ -590,13 +593,21 @@ if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
 }
 
 pp_check(mod_popsize) ##look at the other pp_check types too
+
+#loo1<-loo(mod_popsize,save_psis=TRUE)
+#
+#ppc_loo_pit_overlay(
+#  yrep = predict(mod_popsize, summary = FALSE),
+#  y = data_popsize$Peggs_est,
+#  lw = weights(loo1$psis)
+#)
 ```
 
-It looks like this model does not reproduce the data very well. Maybe we should do like with genetic diversity and use a student model on the logits instead?
+It looks like this model does not reproduce the data very well, at all. Maybe we should do like with genetic diversity and use a student model on the logits instead?
 
 ```{r}
-if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
-  load(here("R_output", "model3_popsize_expe.Rdata"))
+if (file.exists(here("R_output", "model3bis_popsize_expe.Rdata"))) {
+  load(here("R_output", "model3bis_popsize_expe.Rdata"))
 } else {
   mod_popsize2 <- brm(bf(logit(Peggs_est) ~ 0 + Treatment + (1 | Macro) + (1 | landscapeID)),
   data = data_popsize, family = student,
@@ -611,10 +622,18 @@ if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
   )
 
 
-  save(list = "mod_popsize", file = here("R_output", "model3bis_popsize_expe.Rdata"))
+  save(list = "mod_popsize2", file = here("R_output", "model3bis_popsize_expe.Rdata"))
 }
 
 pp_check(mod_popsize2) + lims(x=c(-5,5)) ##look at the other pp_check too
+
+
+#loo2<-loo(mod_popsize2,save_psis=TRUE)
+#ppc_loo_pit_overlay(
+#  yrep = predict(mod_popsize2, summary = FALSE),
+#  y = logit(data_popsize$Peggs_est),
+#  lw = weights(loo2$psis)
+#)
 
 ```
 
@@ -686,46 +705,6 @@ mod_K_v <- brm(mvbf(bf_front+bf_popsize),
   save(list = "mod_K_v", file = here("R_output", "model4_Kv_expe.Rdata"))
 }
 ```
-
-
-```{r}
-posterior_samples(mod_K_v) %>%
-  select(contains("cor_landscapeID__front_logspeedasym")) %>% 
-  select(contains("logitPeggsest")) %>% 
-  mutate(iter=1:dim(.)[1]) %>% 
-  pivot_longer(cols=-iter) %>% 
-  ggplot()+
-  stat_eye(aes(x=name,y=value),point_interval=mean_hdi)+
-  scale_y_continuous("correlation v_asym - K")
-
-
-ttt=posterior_samples(mod_K_v) %>%
-  select(contains("cor_landscapeID__front_logspeedasym")) %>% 
-  select(contains("logitPeggsest")) 
-
-hist(ttt[,1]-ttt[,2])
-
-
-###quick and dirty look at BLUP
-as.data.frame(ranef(mod_K_v)$landscapeID[,"Estimate",]) %>% 
-  rownames_to_column(var="landscapeID") %>% 
-  mutate(is.pushed=substr(landscapeID,15,16)=="PS") %>% 
-  ggplot()+
-  geom_point(aes(logitPeggsest_Intercept,front_logspeedasym_Intercept))+
-  facet_wrap(~is.pushed)
-####oooooooo pretty
-```
-
-One can check the result of the bivariate model against a quick and dirty plot of the empirical end speed versus average *K*. Visually, they seem to agree regarding the main result (no correlation in reference, correlation when connectivity is low). 
-```{r}
-data_popsize %>% 
-  group_by(Treatment,landscapeID,Macro) %>% 
-  summarise(speed=max(front)/13,K=mean(Peggs_est)) %>% 
-  ggplot()+
-  geom_point(aes(K,speed))+
-  facet_wrap(~Macro+Treatment)
-```
-The reason we couldn't simply test directly the correlations on those, and had to go through a bivariate model, is because both *v* and *K* are actually only known with (a lot of) uncertainty, which has to be accounted for (inferences based only on the figure above could have been overconfident).
 
 ## Postprocessing : plots and summaries
 
@@ -832,7 +811,10 @@ p2 <- data_genetics %>%
   stat_eye(aes(x = Location, y = .value, fill = Location), slab_alpha = 0.9, point_interval = mean_hdi) +
   scale_fill_manual(values = edgecorePalette) +
   facet_wrap(~Treatment) +
-  scale_y_continuous(expression(paste("Mean genetic diversity decay rate  ", lambda))) +
+  scale_y_continuous(expression(paste("Mean genetic diversity decay rate  ", lambda)),
+                     sec.axis = sec_axis(trans= ~0.5/., #if diploid, lambda = 1/(2*Ne) then Ne = 0.5*lambda
+                                         name=expression(paste("Effective population size  ", italic(N[e]))), 
+                                         breaks=c(5,10,50,100,500))) +
   theme_half_open(11) +
   background_grid(colour.major = "grey95", colour.minor = "grey95") +
   theme(legend.position = "none")
@@ -848,7 +830,7 @@ newdata <- data_genetics %>%
   filter(is.edge != 0) %>%
   distinct() %>%
   add_fitted_draws(mod_genetics, nlpar = "logdecay", re_formula = NA) %>%
-  mutate(.value = 10^(.value))
+  mutate(.value = (10^(.value)))
 
 ## differences in decay between treatments per location
 newdata %>%
@@ -871,3 +853,87 @@ newdata %>%
   compare_levels(.value, by = Treatment, fun = `-`) %>%
   mean_hdi()
 ```
+
+### Relationship between *K* and *v*
+
+
+```{r}
+preds_v<-data_popsize %>%
+  mutate(Macro = "MacroG2", Generation = 1) %>%
+  select(landscapeID, Macro, Treatment, Generation) %>%
+  distinct() %>%
+  add_fitted_draws(mod_K_v, resp="front", nlpar = "logspeedasym", re_formula = ~(1|landscapeID)) %>% 
+  mutate(v=exp(.value)) %>% 
+  group_by(landscapeID,Treatment) %>% 
+  mean_hdi(v) %>% 
+  select(landscapeID,Treatment, v,lower_v=.lower,upper_v=.upper)
+
+preds_K<-data_popsize %>%
+  mutate(Macro = "MacroG2", Generation = 1) %>%
+  select(landscapeID, Macro, Treatment, Generation) %>%
+  distinct() %>%
+  add_fitted_draws(mod_K_v, resp="logitPeggsest", re_formula = ~(1|landscapeID)) %>% 
+  mutate(K=invlogit(.value)) %>% 
+  group_by(landscapeID,Treatment) %>% 
+  mean_hdi(K) %>% 
+  select(landscapeID,Treatment, K,lower_K=.lower,upper_K=.upper)
+
+p1 <- left_join(preds_v,preds_K) %>% 
+  ggplot()+
+  geom_segment(aes(x=lower_K*450,xend=upper_K*450,y=v,yend=v),col="grey85")+
+  geom_segment(aes(x=K*450,xend=K*450,y=lower_v,yend=upper_v),col="grey85")+
+  geom_point(aes(K*450,v,fill=Treatment),pch=21,size=2)+
+  scale_y_continuous(expression(paste("predicted asymptotic velocity  ", italic(v))))+
+  scale_x_continuous(expression(paste("predicted ", italic(K), " (mean population size in starting patch)")))+
+  scale_fill_manual(values=TRTpalette)+
+  facet_wrap(~Treatment)+
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
+
+
+cors_K_v=posterior_samples(mod_K_v) %>%
+  select(contains("cor_landscapeID__front_logspeedasym")) %>% 
+  select(contains("logitPeggsest")) %>% 
+  mutate(.iteration = 1:dim(.)[1]) %>% 
+  pivot_longer(-.iteration) %>% 
+  mutate(Treatment = factor(str_detect(name,"reference"))) %>% 
+  mutate(Treatment = fct_recode(Treatment,reference="TRUE", `reduced connectivity`="FALSE")) %>% 
+  mutate(Treatment = fct_relevel(Treatment, "reference", after = 0))
+
+p2 <- cors_K_v %>% 
+  ggplot()+
+  stat_eye(aes(y=value,x=Treatment, fill= Treatment),point_interval=mean_hdi, slab_alpha = 0.9)+
+  geom_hline(yintercept=0,lty=2)+
+  scale_y_continuous(expression(paste(italic(K)-italic(v), " correlation")),limits = c(-1,1))+
+  scale_x_discrete("")+
+  scale_fill_manual(values = TRTpalette)+
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
+
+p1/p2 + plot_annotation(tag_levels = "A") + plot_layout(guides = "collect") &
+  theme(legend.position = "none")
+```
+
+
+```{r}
+
+cors_K_v %>% 
+  group_by(Treatment) %>% 
+  mean_hdi(value)
+
+cors_K_v %>% 
+  compare_levels(variable=value,by=Treatment) %>% 
+  mean_hdi(value)
+```
+
+One can check the result of the bivariate model against a quick and dirty plot of the empirical end speed versus average *K*. Visually, they seem to agree regarding the main result (no correlation in reference, correlation when connectivity is low). 
+```{r}
+data_popsize %>% 
+  group_by(Treatment,landscapeID,Macro) %>% 
+  summarise(speed=max(front)/13,K=mean(Peggs_est)) %>% 
+  ggplot()+
+  geom_point(aes(K,speed))+
+  facet_wrap(~Macro+Treatment)
+```
+
+The reason we couldn't simply test directly the correlations on those, and had to go through a bivariate model, is because both *v* and *K* are actually only known with (a lot of) uncertainty, which has to be accounted for (inferences based only on the figure above could have been overconfident).
