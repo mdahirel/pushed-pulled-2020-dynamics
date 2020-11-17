@@ -92,7 +92,6 @@ data_front <- data %>%
 
 The situation here is bit more complex. We can't simply use the heterozygosity per patch as in the experimental dataset, because there are many zeroes:
 ```{r data-genetics1}
-# not shown
  ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.edge+K)
 ### lots of zero, can't use
 ```
@@ -105,12 +104,6 @@ data_genetics <- data %>%
   group_by(ticks, treatment, is.edge, K) %>% # we group by "type" of patch and generation
   summarise(varP1 = var(P1), varP0 = var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
   mutate(K = factor(K))
-```
-
-```{r data-genetics3}
-# not shown
- ggplot(data_genetics) +geom_line(aes(x=ticks,y=varP1,group=is.edge,col=is.edge))+facet_wrap(~treatment+K)
-### lots of zero, can't use
 ```
 
 Now we have everything we need, we can fit some models! (see manuscript for details)
@@ -149,8 +142,8 @@ To save computing time (given the very large dataset), we are also only using ev
 
 data_front_part <- data_front %>% filter((ticks %% 5) == 0)
 
-if (file.exists(here("R_output", "model3_front_IBM.Rdata"))) {
-  load(here("R_output", "model3_front_IBM.Rdata"))
+if (file.exists(here("R_output", "model5_front_IBM.Rdata"))) {
+  load(here("R_output", "model5_front_IBM.Rdata"))
 } else {
   mod_front_IBM <- brm(bf_front_IBM,
     data = data_front_part,
@@ -169,7 +162,7 @@ if (file.exists(here("R_output", "model3_front_IBM.Rdata"))) {
                        )
 
 
-  save(list = c("mod_front_IBM","loo_mod_front_IBM"), file = here("R_output", "model3_front_IBM.Rdata"))
+  save(list = c("mod_front_IBM","loo_mod_front_IBM"), file = here("R_output", "model5_front_IBM.Rdata"))
 }
 ```
 
@@ -188,8 +181,8 @@ bf_front_IBM2 <- bf(front ~ log(speed * ticks),
                family = lognormal, nl = TRUE
 )
 
-if (file.exists(here("R_output", "model3bis_front_power_IBM.Rdata"))) {
-  load(here("R_output", "model3bis_front_power_IBM.Rdata"))
+if (file.exists(here("R_output", "model5bis_front_power_IBM.Rdata"))) {
+  load(here("R_output", "model5bis_front_power_IBM.Rdata"))
 } else {
 
 mod_front_IBM2 <- brm(bf_front_IBM2,
@@ -199,7 +192,7 @@ mod_front_IBM2 <- brm(bf_front_IBM2,
                  seed = 42
 )
 
-  save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model3bis_front_power_IBM.Rdata"))
+  save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model5bis_front_power_IBM.Rdata"))
 }
 
 ```
@@ -233,7 +226,7 @@ The exponential model is better supported by far, so we go forward with it rathe
 summary(mod_front_IBM)
 
 ### The default summary prints posterior means and quantile intervals. What if we want HD Intervals instead?
-summary_front <- mod_front_IBM %>%
+summary_front_IBM <- mod_front_IBM %>%
   posterior_samples() %>%
   select(starts_with(c("Intercept", "b_", "sd_", "cor_", "sigma"))) %>%
   pivot_longer(everything()) %>%
@@ -241,7 +234,7 @@ summary_front <- mod_front_IBM %>%
   mean_hdi() %>%
   print(n = Inf)
 
-mcmc_rank_overlay(mod_front_IBM, pars = summary_front$name)
+mcmc_rank_overlay(mod_front_IBM, pars = summary_front_IBM$name)
 ```
 
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
@@ -249,10 +242,10 @@ mcmc_rank_overlay(mod_front_IBM, pars = summary_front$name)
 Our model here is based on Gandhi et al 2019 PNAS and assumes genetic among replicate variance increases through time until reaching a plateau only determined by the initial allelic frequencies. The "decay" rate parameter is our parameter of interest here, and because we *know* the (average) initial allelic frequencies, we can put a more informative prior on the plateau parameter:
 
 ```{r}
-if (file.exists(here("R_output", "model4_genetics_IBM.Rdata"))) {
-  load(here("R_output", "model4_genetics_IBM.Rdata"))
+if (file.exists(here("R_output", "model6_genetics_IBM.Rdata"))) {
+  load(here("R_output", "model6_genetics_IBM.Rdata"))
 } else {
-  prior_genetics <- c(
+  prior_genetics_IBM <- c(
     set_prior("normal(-1.1,0.5)", nlpar = c("logitVmax")), # informative prior (logit(0.25)=-1.10 (rounded to 2 decimals))
     # we *know* Vmax should on average be 0.25 (see main text), but rather than fix it
     # we want a prior with some wiggle room because of the effects of sampling variation (we don't know how pronounced they may be)
@@ -262,7 +255,7 @@ if (file.exists(here("R_output", "model4_genetics_IBM.Rdata"))) {
     set_prior("normal(0,1)", nlpar = "invphi", lb = 0)
   )
 
-  bf_genetics <- bf(varP1 ~ logit(Vmax * (1 - exp(-(ticks) * decay))),
+  bf_genetics_IBM <- bf(varP1 ~ logit(Vmax * (1 - exp(-(ticks) * decay))),
     nlf(Vmax ~ inv_logit(logitVmax)),
     nlf(decay ~ 10^(logdecay)),
     logitVmax ~ 1,
@@ -272,20 +265,20 @@ if (file.exists(here("R_output", "model4_genetics_IBM.Rdata"))) {
     family = Beta(link_phi = "identity"), nl = TRUE
   )
 
-  mod_genetics <- brm(bf_genetics,
+  mod_genetics_IBM <- brm(bf_genetics_IBM,
     data = data_genetics,
     iter = 4000, warmup = 2000, chains = 4,
-    prior = prior_genetics, seed = 42
+    prior = prior_genetics_IBM, seed = 42
   )
 
-  save(list = "mod_genetics", file = here("R_output", "model4_genetics_IBM.Rdata"))
+  save(list = "mod_genetics_IBM", file = here("R_output", "model6_genetics_IBM.Rdata"))
 }
 ```
 
 ```{r summary-model-genetics}
-summary(mod_genetics)
+summary(mod_genetics_IBM)
 
-summary_genetics <- mod_genetics %>%
+summary_genetics_IBM <- mod_genetics_IBM %>%
   posterior_samples() %>%
   select(starts_with(c("b_"))) %>%
   pivot_longer(everything()) %>%
@@ -293,24 +286,18 @@ summary_genetics <- mod_genetics %>%
   mean_hdi() %>%
   print(n = Inf)
 
-mcmc_rank_overlay(mod_genetics, pars = summary_genetics$name)
+mcmc_rank_overlay(mod_genetics_IBM, pars = summary_genetics_IBM$name)
 
 ### prediction intervals around each point
 ppc_ribbon(
-  yrep = predict(mod_genetics, summary = FALSE),
-  x = rank(predict(mod_genetics)[, 1]),
+  yrep = predict(mod_genetics_IBM, summary = FALSE),
+  x = rank(predict(mod_genetics_IBM)[, 1]),
   y = data_genetics$varP1,
   prob = 0.5, prob_outer = 0.95
 )
 ```
 
 ## Postprocessing : plots and summaries
-
-```{r color-palettes}
-
-TRTpalette <- c("#d8b365", "#5ab4ac")
-edgecorePalette <- c("#f1a340", "#998ec3")
-```
 
 ### Dataset front: speed of the advancing range expansions
 
@@ -319,7 +306,6 @@ First let's make a file that contains the speeds at which we move from one type 
 ```{r velocity-thresholds}
 thresholds <- data_front %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
   mutate(threshold_pushed = (3 / (2 * sqrt(2))) * v_f) %>%
   select(K, treatment, v_f, threshold_pushed) %>%
   distinct() %>%
@@ -340,6 +326,7 @@ data_front %>%
   ungroup() %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
   mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>%
   mutate(replicateID = replicateID[1], ticks = 1) %>%
   select(treatment, ticks, replicateID, K) %>%
   distinct() %>%
@@ -349,8 +336,8 @@ data_front %>%
   ggplot() +
   geom_hline(data = thresholds, aes(yintercept = threshold_value, lty = threshold_type)) +
   stat_eye(aes(x = factor(K), group = K, y = .value), normalize = "xy") +
-  scale_y_continuous("Mean asymptotic velocity (posterior)") +
-  scale_x_discrete("equilibrium population size K") +
+  scale_y_continuous(expression(paste("Mean asymptotic velocity  ", italic(v)," (posterior)"))) +
+  scale_x_discrete(expression(paste("equilibrium population size ", italic(K)))) +
   scale_linetype_discrete(
     name = "",
     labels = c(
@@ -372,7 +359,7 @@ data_front %>%
   mutate(replicateID = replicateID[1], ticks = 1) %>%
   select(treatment, ticks, replicateID, K, v_f) %>%
   distinct() %>%
-  add_fitted_draws(mod_front, nlpar = "logitspeedasym", re_formula = NA) %>%
+  add_fitted_draws(mod_front_IBM, nlpar = "logitspeedasym", re_formula = NA) %>%
   mutate(.value = invlogit(.value)) %>%
   mutate(.value = .value / v_f) %>%
   mean_hdi()
@@ -382,7 +369,7 @@ data_front %>%
 
 ```{r figure-genetics}
 ## to figure out: Ne is 1/lambda or (1/lambda)/2 ?? seen both
-data_genetics %>%
+predicted_lambda<- data_genetics %>%
   ungroup() %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
   mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
@@ -393,40 +380,38 @@ data_genetics %>%
   mutate(Location = fct_relevel(Location, "edge", "core")) %>%
   distinct() %>%
   mutate(ticks = 1) %>%
-  add_fitted_draws(mod_genetics, re_formula = NA, nlpar = "logdecay") %>%
+  add_fitted_draws(mod_genetics_IBM, re_formula = NA, nlpar = "logdecay") %>%
   mutate(.value = 10^(.value)) %>%
-  ungroup() %>%
+  ungroup()
+
+
+p1 <- predicted_lambda %>% 
+  filter(Location == "edge") %>% 
   ggplot() +
-  stat_eye(aes(x = K, fill = Location, group = Location, y = .value), position = "dodge", normalize = "xy") +
-  facet_grid(cols = vars(treatment), rows = vars(Location), scales = "free_y") +
-  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda))) +
+  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill = "#f1a340") +
+  facet_grid(cols = vars(treatment), scales = "free_y") +
+  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)),
+                       sec.axis = sec_axis(trans= ~1/., #if haploid, lambda = 1/Ne, see e.g. doi: 10.1111/ele.13364
+                                           name=expression(paste("Effective population size  ", italic(N[e]))), 
+                                           breaks=c(5,10,15,20)))+
   scale_x_discrete("equilibrium population size K") +
-  scale_fill_manual("Location", values = edgecorePalette) +
   theme_half_open(11) +
+  labs(title="edge patches:") + 
   background_grid(colour.major = "grey95", colour.minor = "grey95")
-```
 
-### Figure 6 of main text
-
-```{r figure6}
-tibble(
-  treatment = c("reference", "restricted connectivity"),
-  xstart = c(0.5, 2),
-  xend = c(1.5, 3),
-  expected = c(0.2, 0.1),
-  observed = c(0.22, 0.15)
-) %>%
+p2 <- predicted_lambda %>% 
+  filter(Location == "core") %>% 
   ggplot() +
-  geom_point(aes(x = xstart + 0.5, y = observed, fill = treatment), size = 5, pch = 21) +
-  scale_fill_manual("Treatment", values = TRTpalette) +
-  geom_segment(aes(x = xstart, xend = xend, y = expected, yend = expected), lty = 2, col = "grey30") +
-  geom_segment(aes(y = 0.22, yend = 0.12, x = 1.6, xend = 1.6), arrow = arrow(type = "closed", length = unit(0.03, "npc"))) +
-  geom_segment(aes(y = 0.12, yend = 0.15, x = 1.8, xend = 1.8), arrow = arrow(type = "closed", length = unit(0.03, "npc"))) +
-  annotate("label", x = c(1.45, 1.95), y = c(0.13, 0.13), label = c(1, 2), col = "grey30") +
-  scale_y_continuous(name = "Average size of newly founded populations", breaks = NULL, lim = c(0, 0.25)) +
-  annotate("text", x = 3.5, y = 0.1, label = "expectation with \n deterministic dispersal", col = "grey30") +
-  scale_x_continuous("", lim = c(0.5, 4), breaks = c(1, 2.5), labels = c("reference", "reduced connectedness")) +
+  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill= "#998ec3") +
+  facet_grid(cols = vars(treatment), scales = "free_y") +
+  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)),
+                       sec.axis = sec_axis(trans= ~1/., #if haploid, lambda = 1/Ne
+                                           name=expression(paste("Effective population size  ", italic(N[e]))), 
+                                           breaks=c(300,400,500,1000)))+
+  scale_x_discrete("equilibrium population size K") +
   theme_half_open(11) +
-  # background_grid(colour.major = "grey95",colour.minor = "grey95")+
-  theme(legend.position = "none")
+  labs(title="core patches:") +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
+
+p1/p2 + plot_annotation(tag_levels = 'A')
 ```
