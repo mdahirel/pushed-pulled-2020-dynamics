@@ -247,10 +247,10 @@ We here assume each front initially advances at a speed that may not be the asym
 
 ```{r model-front}
 
-if (file.exists(here("R_output", "model1_front_expe.Rdata")))
+if (file.exists(here("R_output", "model1_front_expe.Rdata")))  {
 # this if-else statement is avoid re-fitting a model when knitting Rmd file if there is already one existing in R_output
 # to override, re-run the model and re-save manually by selecting relevant code lines then knit (or delete the Rdata object)
-  {
+
     load(here("R_output", "model1_front_expe.Rdata"))
   } else {
   bf_front <- bf(front ~ log(speed * Generation),
@@ -292,10 +292,10 @@ Before we go forward, we need to check whether a power decay in the non-linear f
 
 ```{r model-front-power}
 
-if (file.exists(here("R_output", "model1bis_front_expe_power.Rdata")))
+if (file.exists(here("R_output", "model1bis_front_expe_power.Rdata"))){
 # this if-else statement is avoid re-fitting a model when knitting Rmd file if there is already one existing in R_output
 # to override, re-run the model and re-save manually by selecting relevant code lines then knit (or delete the Rdata object)
-  {
+
     load(here("R_output", "model1bis_front_expe_power.Rdata"))
   } else {
 bf_front2 <- bf(front ~ log(speed * Generation),
