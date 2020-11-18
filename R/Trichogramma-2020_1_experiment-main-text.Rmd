@@ -198,7 +198,7 @@ data_genetics <- raw_genetics %>%
     Location = fct_recode(Location, core = "C", edge = "F")
   ) %>%
   mutate(Location = as.character(Location)) %>%
-  mutate(Location = replace_na(Location, "origin")) %>% ## samples that are neither core nor edge are from the origin (G0)
+  mutate(Location = replace_na(Location, "origin (x = 0, t = 0)")) %>% ## samples that are neither core nor edge are from the origin (G0)
   mutate(Location = factor(Location), landscapeID = paste("Mix", Mix, "_Treatment", Treatment, "_Replicate", Replicate, sep = "")) %>%
   mutate(spacetimeID = paste(landscapeID, "_Generation", Generation, "_Location", Location, sep = "")) %>% # unique population (landscape x patch location x time) ID
   mutate(
@@ -811,10 +811,7 @@ p2 <- data_genetics %>%
   stat_eye(aes(x = Location, y = .value, fill = Location), slab_alpha = 0.9, point_interval = mean_hdi) +
   scale_fill_manual(values = edgecorePalette) +
   facet_wrap(~Treatment) +
-  scale_y_continuous(expression(paste("Mean genetic diversity decay rate  ", lambda)),
-                     sec.axis = sec_axis(trans= ~0.5/., #if diploid, lambda = 1/(2*Ne) then Ne = 0.5/lambda
-                                         name=expression(paste("Effective population size  ", italic(N[e]))), 
-                                         breaks=c(5,10,50,100,500))) +
+  scale_y_continuous(expression(paste("Mean genetic diversity decay rate  ", lambda))) +
   theme_half_open(11) +
   background_grid(colour.major = "grey95", colour.minor = "grey95") +
   theme(legend.position = "none")

@@ -390,10 +390,7 @@ p1 <- predicted_lambda %>%
   ggplot() +
   stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill = "#f1a340") +
   facet_grid(cols = vars(treatment), scales = "free_y") +
-  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)),
-                       sec.axis = sec_axis(trans= ~1/., #if haploid, lambda = 1/Ne, see e.g. doi: 10.1111/ele.13364
-                                           name=expression(paste("Effective population size  ", italic(N[e]))), 
-                                           breaks=c(5,10,15,20)))+
+  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)))+
   scale_x_discrete("equilibrium population size K") +
   theme_half_open(11) +
   labs(title="edge patches:") + 
@@ -404,10 +401,7 @@ p2 <- predicted_lambda %>%
   ggplot() +
   stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill= "#998ec3") +
   facet_grid(cols = vars(treatment), scales = "free_y") +
-  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)),
-                       sec.axis = sec_axis(trans= ~1/., #if haploid, lambda = 1/Ne
-                                           name=expression(paste("Effective population size  ", italic(N[e]))), 
-                                           breaks=c(300,400,500,1000)))+
+  scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)))+
   scale_x_discrete("equilibrium population size K") +
   theme_half_open(11) +
   labs(title="core patches:") +

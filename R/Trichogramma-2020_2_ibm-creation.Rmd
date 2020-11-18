@@ -22,29 +22,14 @@ library(arm)
 library(tidyverse)
 library(cowplot)
 library(here)
+library(patchwork)
 ```
 
 # Introduction
 
 (see manuscript/preprint text for more context)
 
-Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way:
-
-```{r proof-of-principle}
-# proof of principle that reduced dispersal restricts spread to new patches more at low N, due to properties of the binomial distribution
-expand_grid(dispersal.rate = c(0.05, 0.1, 0.2, 0.4), N = 1:500) %>%
-  mutate(label = if_else(N == min(N), paste("*D* = ", dispersal.rate, sep = ""), NA_character_)) %>%
-  ggplot() +
-  geom_line(aes(x = N, y = 1 - pbinom(0, N, dispersal.rate), col = dispersal.rate, group = dispersal.rate), size = 1.2) +
-  scale_y_continuous(name = "Probability that at least one individual disperses") +
-  scale_x_log10(name = "Population size before dispersal phase", breaks = c(1, 2, 5, 10, 20, 50, 100, 200, 500), limits = c(0.4, 500)) +
-  scale_color_gradient(name = "Mean dispersal rate", low = "black", high = "grey60") +
-  geom_textbox(aes(x = N, y = dispersal.rate, label = label), width = 0.15, box.padding = unit(c(1, 0, 1, 0), "pt"), halign = 0.5, hjust = 1, vjust = 0) +
-  theme_half_open(11) +
-  background_grid(colour.major = "grey95", colour.minor = "grey95") +
-  theme(legend.position = "none")
-### the effect vanishes around N=100 and become strong at N < 10 so probably too rare to be detected in previous simulation studies with K in tens of thousands
-```
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way.
 
 The aim of the model is to test this prediction using information on front velocity and genetic diversity in the front and core patches of expanding metapopulations. To validate the simulation, we also set up treatments with Allee effects and (classical) density-dependent dispersal. We focus on relatively "low" population sizes, as they are where our effect of interest is present, and have been understudied in theory. We look at two populations sizes because of previous research showing equilibrium population size *K* influences the dynamics of pushed waves, and to have a qualitative point of comparison in case experimental data also involve shifts in *K*.
 
@@ -95,6 +80,40 @@ trt_grid <- tibble(
     ) ## dispersal term at N = 1
   )
 ```
+
+The corresponding growth and dispersal functions are plotted Figure 2:
+
+```{r figure2}
+trt_grid2 <- trt_grid %>% 
+  expand_grid(N=c(1:450)) %>% 
+  mutate(dispersal_rate=invlogit(logit(disp0_mean)+(N/K)*slope_disp_mean),
+         mean_fecundity=exp(log(fecundity)*(1- (N/K) )*(1- (start_allee_thres/N)))) %>% 
+  mutate(K=factor(K)) %>% 
+  mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+
+plot_disp<-ggplot(trt_grid2)+
+  geom_line(aes(x=N,y=dispersal_rate,group=K,lty=K)) +
+  geom_point(data=trt_grid2 %>% filter(N==1),aes(x=N,y=dispersal_rate,group=K)) +
+  scale_y_continuous("mean dispersal rate",limits = c(0,0.75)) +
+  scale_x_continuous("") +
+  facet_grid(cols=vars(treatment))  +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
+
+plot_fec<-ggplot(trt_grid2)+
+  geom_line(aes(x=N,y=mean_fecundity,group=K,lty=K)) +
+  geom_point(data=trt_grid2 %>% filter(N==1),aes(x=N,y=mean_fecundity,group=K)) +
+  scale_y_continuous("mean per capita fecundity") +
+  scale_x_continuous("Population size N") +
+  facet_grid(cols=vars(treatment))  +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")
+
+plot_disp/plot_fec + plot_layout(guides = 'collect') + plot_annotation(tag_levels="A")
+```
+
 
 
 Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object (we encourage readers to look at the info pane in the .nlogo model file for details):
