@@ -368,7 +368,6 @@ data_front %>%
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
 
 ```{r figure-genetics}
-## to figure out: Ne is 1/lambda or (1/lambda)/2 ?? seen both
 predicted_lambda<- data_genetics %>%
   ungroup() %>%
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
