@@ -655,6 +655,7 @@ posterior_samples(mod_popsize2) %>%  ##get coefficient posteriors
   select(contains("b_")) %>%             ##keep only fixed effects
   mutate(.iteration = 1:dim(.)[1]) %>% 
   pivot_longer(cols=-.iteration) %>% 
+  mutate(value=invlogit(value)) %>% 
   compare_levels(variable="value",by="name") %>% 
   mean_hdi()
 ```

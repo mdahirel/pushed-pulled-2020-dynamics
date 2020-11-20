@@ -192,6 +192,11 @@ mod_front_IBM2 <- brm(bf_front_IBM2,
                  seed = 42
 )
 
+  loo_mod_front_IBM2<-loo(mod_front_IBM2,
+                       nsamples=4000,subset=1:4000 #,## 1/4 of posterior samples; 
+                       #comparison with power model gives same conclusions when using any of the other quarters
+                       )
+
   save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model5bis_front_power_IBM.Rdata"))
 }
 
