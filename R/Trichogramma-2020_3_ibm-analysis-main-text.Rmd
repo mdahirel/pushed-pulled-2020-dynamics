@@ -335,7 +335,7 @@ data_front %>%
   ungroup() %>%
   ggplot() +
   geom_hline(data = thresholds, aes(yintercept = threshold_value, lty = threshold_type)) +
-  stat_eye(aes(x = factor(K), group = K, y = .value), normalize = "xy") +
+  stat_eye(aes(x = factor(K), group = K, y = .value), normalize = "xy", .width=c(0.001,0.95)) +
   scale_y_continuous(expression(paste("Mean asymptotic velocity  ", italic(v)," (posterior)"))) +
   scale_x_discrete(expression(paste("equilibrium population size ", italic(K)))) +
   scale_linetype_discrete(
@@ -387,7 +387,7 @@ predicted_lambda<- data_genetics %>%
 p1 <- predicted_lambda %>% 
   filter(Location == "edge") %>% 
   ggplot() +
-  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill = "#f1a340") +
+  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill = "#f1a340", .width=c(0.001,0.95)) +
   facet_grid(cols = vars(treatment), scales = "free_y") +
   scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)))+
   scale_x_discrete("equilibrium population size K") +
@@ -398,7 +398,7 @@ p1 <- predicted_lambda %>%
 p2 <- predicted_lambda %>% 
   filter(Location == "core") %>% 
   ggplot() +
-  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill= "#998ec3") +
+  stat_eye(aes(x = K, y = .value), position = "dodge", normalize = "xy", fill= "#998ec3", .width=c(0.001,0.95)) +
   facet_grid(cols = vars(treatment), scales = "free_y") +
   scale_y_continuous(name = expression(paste("Mean genetic diversity decay rate  ", lambda)))+
   scale_x_discrete("equilibrium population size K") +

@@ -510,11 +510,11 @@ if (file.exists(here("R_output", "model2ter_genet_expe.Rdata"))) {
 ## summary(mod_genetics3)
 ## confirms that the logit-normal behaves more or less like the Beta re: parameter values
 
-pp_check(mod_genetics, type = "loo_pit_overlay", nsamples = 2000)
+pp_check(mod_genetics, type = "loo_pit_overlay", nsamples = 200)
 
-pp_check(mod_genetics2, type = "loo_pit_overlay", nsamples = 2000)
+pp_check(mod_genetics2, type = "loo_pit_overlay", nsamples = 200)
 
-pp_check(mod_genetics3, type = "loo_pit_overlay", nsamples = 2000)
+pp_check(mod_genetics3, type = "loo_pit_overlay", nsamples = 200)
 
 ## the LOO PIT graphs too
 ## , so now let's compare logit student and logit normal:
@@ -627,6 +627,14 @@ if (file.exists(here("R_output", "model3bis_popsize_expe.Rdata"))) {
 
 pp_check(mod_popsize2) + lims(x=c(-5,5)) ##look at the other pp_check too
 
+###previous plot is on the logit scale, let's backtransform to be able to compare to the first model
+
+
+ppc_dens_overlay(
+  yrep = invlogit(predict(mod_popsize2, summary = FALSE))[1:10,], #display only the first 10 posteriors, like in the pp_check default
+  y = data_popsize$Peggs_est
+)
+
 
 #loo2<-loo(mod_popsize2,save_psis=TRUE)
 #ppc_loo_pit_overlay(
@@ -634,6 +642,7 @@ pp_check(mod_popsize2) + lims(x=c(-5,5)) ##look at the other pp_check too
 #  y = logit(data_popsize$Peggs_est),
 #  lw = weights(loo2$psis)
 #)
+
 
 ```
 
@@ -747,7 +756,7 @@ p2 <- data_front %>%
   mutate(.value = exp(.value)) %>% ## backtransformation
   ungroup() %>%
   ggplot() +
-  stat_eye(aes(x = Treatment, y = .value, fill = Treatment), slab_alpha = 0.9, point_interval = mean_hdi) +
+  stat_eye(aes(x = Treatment, y = .value, fill = Treatment), slab_alpha = 0.9, .width=c(0.001,0.95), point_interval = mean_hdi) +
   scale_fill_manual(values = TRTpalette) +
   scale_x_discrete("Landscape type") +
   scale_y_continuous("Mean asymptotic velocity (patches/generation)") +
@@ -789,7 +798,7 @@ p1 <- data_genetics %>%
   mutate(.value = invlogit(.value)) %>%
   ungroup() %>%
   ggplot() +
-  stat_lineribbon(aes(x = Generation, y = .value, fill = Location), .width = c(0.66, 0.95), alpha = 0.4, point_interval = mean_hdi) +
+  stat_lineribbon(aes(x = Generation, y = .value, fill = Location), .width = 0.95, alpha = 0.5, point_interval = mean_hdi) +
   geom_point(data = data_genetics, aes(x = Generation + is.edge, y = Hexp, bg = Location, col = Location), alpha = 0.6, pch = 21, size = 2) +
   scale_fill_manual(values = edgecorePalette) +
   scale_colour_manual(values = edgecorePalette) +
@@ -808,7 +817,7 @@ p2 <- data_genetics %>%
   filter(is.edge != 0) %>%
   ungroup() %>%
   ggplot() +
-  stat_eye(aes(x = Location, y = .value, fill = Location), slab_alpha = 0.9, point_interval = mean_hdi) +
+  stat_eye(aes(x = Location, y = .value, fill = Location), slab_alpha = 0.9, .width=c(0.001,0.95), point_interval = mean_hdi) +
   scale_fill_manual(values = edgecorePalette) +
   facet_wrap(~Treatment) +
   scale_y_continuous(expression(paste("Mean genetic diversity decay rate  ", lambda))) +
@@ -899,7 +908,7 @@ cors_K_v=posterior_samples(mod_K_v) %>%
 
 p2 <- cors_K_v %>% 
   ggplot()+
-  stat_eye(aes(y=value,x=Treatment, fill= Treatment),point_interval=mean_hdi, slab_alpha = 0.9)+
+  stat_eye(aes(y=value,x=Treatment, fill= Treatment),point_interval=mean_hdi, .width=c(0.001,0.95), slab_alpha = 0.9)+
   geom_hline(yintercept=0,lty=2)+
   scale_y_continuous(expression(paste(italic(K)-italic(v), " correlation")),limits = c(-1,1))+
   scale_x_discrete("")+
