@@ -91,7 +91,8 @@ trt_grid2 <- trt_grid %>%
   mutate(K=factor(K)) %>% 
   mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
   mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
-  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf))
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) %>% 
+  mutate(treatment = fct_recode(treatment,`weak Allee effect` = "weak Allee effect (a = 0.95)"))
 
 plot_disp<-ggplot(trt_grid2)+
   geom_line(aes(x=N,y=dispersal_rate,group=K,lty=K)) +
