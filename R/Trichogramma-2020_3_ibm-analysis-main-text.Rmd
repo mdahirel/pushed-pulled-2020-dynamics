@@ -226,6 +226,22 @@ tibble(is.problematic= loo_mod_front_IBM$pointwise[,"influence_pareto_k"]>0.7 | 
                  se_diff=sqrt(length(pointwise_exp))*sd(pointwise_exp-pointwise_power))
                  ## see Vehtari et al 2017 doi:10.1007/s11222-016-9696-4 for the SE formula
 #nope, the problematic obs don't cause the differences in elpd; the exponential model still has the clear advantage
+
+
+##if we do this:
+tibble(is.problematic_exp= loo_mod_front_IBM$pointwise[,"influence_pareto_k"]>0.7,
+       is.problematic_power=loo_mod_front_IBM2$pointwise[,"influence_pareto_k"]>0.7) %>%
+  mutate(ticks=data_front_part$ticks,
+         treatment=data_front_part$treatment,
+         K=data_front_part$K) %>% 
+  ggplot()+
+  geom_boxplot(aes(is.problematic_exp,ticks,col=K))+facet_wrap(~treatment)
+
+#we see the problematic obs are limited to the very beginning of the time series, so our model may not be appropriate for these, but should be OK for the asymptotic speed?
+#maybe because we model a decay of speed starting immediately while there may be some delay at the start?
+
+
+
 ```
 
 The exponential model is better supported by far, so we go forward with it rather than the power one, for the rest of the analysis.
