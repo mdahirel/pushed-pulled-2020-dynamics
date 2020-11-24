@@ -1,3 +1,4 @@
-If you run the supplementary material `R` script for the first time, models and some other time-consuming outputs will be saved as `RData` files here to be reused as needed, saving you some time later (you can bypass this behaviour to re-run models manually if you want; see code for details).
+If you want to re-knit the supplementary material `html` document from scratch:
 
-If you want to re-knit the supplementary material `html` document, I'd advise you to first run each model and save them, and then knit once you have everything, since it may take one or two days to get every output
+- if you have unzipped all the archived models (see `README` in the parent folder), just knit, should work; 
+- if you haven't, I'd advise you to first run each model individually and save them, and then knit once you have everything, since it may take a lot of time to fit every model (up to a few days, depending on computer. Don't forget you must also run the "main analysis" models for the supplementary material to knit right, not just the model written in the supplementary material file itself).
