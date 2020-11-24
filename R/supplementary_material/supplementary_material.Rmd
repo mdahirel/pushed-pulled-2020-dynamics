@@ -838,7 +838,7 @@ data_genetics <- data %>%
 
 load(here("R_output", "model5_front_IBM.Rdata"))
 
-load(here("R_output", "model5bis_front_power_IBM.Rdata"))
+load(here("R_output", "model5bis_front_IBM_power.Rdata"))
 
 
 load(here("R_output", "model6_genetics_IBM.Rdata"))

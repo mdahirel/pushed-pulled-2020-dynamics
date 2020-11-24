@@ -186,8 +186,8 @@ bf_front_IBM2 <- bf(front ~ log(speed * ticks),
                family = lognormal, nl = TRUE
 )
 
-if (file.exists(here("R_output", "model5bis_front_power_IBM.Rdata"))) {
-  load(here("R_output", "model5bis_front_power_IBM.Rdata"))
+if (file.exists(here("R_output", "model5bis_front_IBM_power.Rdata"))) {
+  load(here("R_output", "model5bis_front_IBM_power.Rdata"))
 } else {
 
 mod_front_IBM2 <- brm(bf_front_IBM2,
@@ -202,7 +202,7 @@ mod_front_IBM2 <- brm(bf_front_IBM2,
                        #comparison with power model gives same conclusions when using any of the other quarters
                        )
 
-  save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model5bis_front_power_IBM.Rdata"))
+  save(list = c("mod_front_IBM2","loo_mod_front_IBM2"), file = here("R_output", "model5bis_front_IBM_power.Rdata"))
 }
 
 ```
