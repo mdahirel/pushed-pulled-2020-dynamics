@@ -26,7 +26,6 @@ library(modelr)
 library(RColorBrewer)
 
 ### inference
-#library(coda)
 library(rstan)
 library(brms)
 rstan_options(auto_write = TRUE)
@@ -118,7 +117,7 @@ data_genetics %>%
 
 # S2 - Validating computer estimates of *Trichogramma* population sizes
 
-For analyses asking for population sizes (Supplementary Material 3 and 9), the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each potentially having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of parasitism rate/ population size.
+For analyses asking for population sizes, the proportion of parasitized eggs was estimated based on egg strip photographs using ImageJ [@abramoffImageProcessingImageJ2004] and the `CODICOUNT` plugin [@perezMethodeAnalyseImage2017].  `CODICOUNT` estimates the number of pixels assigned to parasitized host eggs, unparasitized host eggs and background after training. We tested each photograph using 4 macros, each trained on a different set of pictures (from generations 1 2, 3 and 13 respectively) and each potentially having its own systematic bias, combined to better approximate real rates. Proportions of pixels identified as “egg” that were also identified as “parasitized” were used as our estimate of parasitism rate/ population size.
 
 To assess the validity of these automated counts, we manually counted parasitized egg plates from 197 patches (out of 2725 photographed for the experiment) roughly spanning the full range of possible population sizes (human count range: 17 to 443; number of hosts per population ≈ 450). 
 
@@ -145,6 +144,7 @@ data_validate <- raw_dynamics %>%
   group_by(spacetimeID) %>%
   filter(sum(is.na(obs_count) == FALSE) > 0) %>% ### we group by spacetimeID (replicate, patch, time) and we filter out all cases without a human count to validate against
   mutate(Neggs_obs = replace_na(obs_count, 0)) ### there are 4 macro counts but only one human count per spacetimeID (put on the same row as one of the macro counts); the other three are NAs, need to contain filler values (0 here) for the bivariate model to work, which won't be used in the analyses)
+# the "filler" approach may not be needed anymore for recent version of brms
 ```
 
 ```{r model-validate}
@@ -294,9 +294,9 @@ data_validate %>%
 
 To determine whether our experimental reduction of structural connectivity did limit individual movement (i.e. functional connectivity), we used data from the first generation of testing, i.e. the only time the patch of origin of all parents can be known with certainty. 
 
-We used parasitism rates to calculate for each landscape × macro the average egg location (in patches from release) and used it as a proxy of dispersal. We analysed this distance using a Beta generalised linear mixed model (dividing it by 4, the maximal possible distance, to ensure it stayed between 0 and 1). The model included a fixed effect of treatment, as well as a random effect of macro (random intercept) to account for uncertainty in our estimates of parasitism and distances, more specifically for macro-level systematic biases.
+We used parasitism rates to calculate for each landscape × macro the average egg location (in patches from release) and used it as a proxy of dispersal distance (works because dispersal can be define as more or less parent-offspring distance). We analysed this distance using a Beta generalised linear mixed model (dividing it by 4, the maximal possible distance, to ensure it stayed between 0 and 1). The model included a fixed effect of treatment, as well as a random effect of macro (random intercept) to account for uncertainty in our estimates of parasitism and distances, more specifically for macro-level systematic biases.
 
-We found that released wasps did lay their eggs closer from release sites in landscapes with reduced connectivity compared to reference landscapes (**Supplementary Figure S3.1**).
+As expected, we found that released wasps did lay their eggs closer from release sites in landscapes with reduced connectivity compared to reference landscapes (**Supplementary Figure S3.1**).
 
 ```{r data-G0}
 raw_dynamics <- read_csv(here("data", "Trichogramma_dynamics.csv"))
@@ -410,10 +410,6 @@ p2 <- newdata %>%
 p1 + p2 + plot_layout(guides = "collect", widths = c(4, 1)) & theme_bw() &
   theme(legend.position = "none")
 
-
-## aside plot (not shown): very roughly showing that there is indeed consistent macro-level bias even on distances
-## data_G0 %>% group_by(landscapeID) %>% mutate(DD=mean(distmean)) %>% ggplot()+ geom_boxplot(aes(x=Macro,y=distmean/DD))
-## likely reason: because macros that over/underestimate parasitism rates will over/underestimate # of eggs in the 4 "dispersal patches" compared to the one "resident patch", so over/underestimate distances
 ```
 
 **Supplementary Figure S3.1.** Left: Mean egg-laying distance from release patch as a function of treatment. Colored areas: posterior distribution (assuming total fecundity fixed to its average); black dots and segments: posterior mean and 66/95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate. Right: posterior difference between the two experimental treatments.
