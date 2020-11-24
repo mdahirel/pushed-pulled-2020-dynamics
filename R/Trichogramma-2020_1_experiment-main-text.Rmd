@@ -48,7 +48,7 @@ To understand how the position of a range expansion on a (putative) pushed/pulle
 
 *Trichogramma brassicae* individuals were introduced in the initial patch, and the experiment ran for 14 generations, counting the starting individuals. 
 
-At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information (this document), and as sources of further offspring for another experiment. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
+At each generation, adults were left free to move and reproduce for 48 hours before being removed. These collected adults were then used as source of genetic information, and as sources of further offspring for another experiment. Patches were added to the end of each landscape as needed, so there was always at least two empty patches at the front. 
 
 We expected that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties:
 
@@ -96,7 +96,7 @@ As a consequence, at the (relatively) low population sizes that interest us, red
 We have obtained two sources of information:
 
 - __genetic information__ is obtained by genotyping adult wasps every ~4 generations (release generation a.k.a G0, and G4,8,12) at 19 microsatellite loci.
-- __population dynamics information__ (population size and spread of the expansion) is obtained by photographing egg plates every generation right when they become brown-black if parasitized. Photographs are then analysed using `ImageJ` and `Codicount` to obtain estimated % of parasitism. Each image is analysed by 4 macros trained on different data ; patches are scanned by humans prior to photographs, patches with no black eggs are directly counted as zeros and thus not present in the dataset. In the main text of the manuscript (and the present document), we only use this file to get information on the location of the most advanced patch (to estimate velocity).
+- __population dynamics information__ (population size and spread of the expansion) is obtained by photographing egg plates every generation right when they become brown-black if parasitized. Photographs are then analysed using `ImageJ` and `Codicount` to obtain estimated % of parasitism. Each image is analysed by 4 macros trained on different data ; patches are scanned by humans prior to photographs, patches with no black eggs are directly counted as zeros and thus not present in the dataset.
 
 # Analysis
 
@@ -142,7 +142,7 @@ The `raw_genetics` dataset has two types of variables:
 
 ### Dataset front: speed of the advancing range expansions
 
-We first play with the dynamics dataset. From the raw dataset we want to produce a `data_front` dataset, to estimate how fast the wave fronts advance
+We first play with the dynamics dataset. From the raw dataset we want to produce a `data_front` dataset, to estimate how fast the expansions advance
 
 We first extract useful variables from the `Image` string, and recode some other variables. For instance, treatments are coded as `PL` (reference) and `PS` (restricted connectivity) in the dataset, based on the expected regimes (*more* PuLled and *more* PuShed, respectively). Recoded to be accurate regardless of actual results. Then we use the fact that only patches with actually parasitized eggs are in the raw dataset to get the front location in each landscape at each time: it is simply the location of the farthest populated patch:
 
@@ -175,7 +175,7 @@ data_front <- raw_dynamics %>%
 
 ### Dataset genetics: dynamics of neutral genetic diversity during expansion
 
-Then we turn to the genetics data. We're only going to generate one analysis dataset here, by converting individual microsatellite info into population/patch-level multilocus expected heterozygosity data, as our measure of genetic diversity.
+Then we turn to the genetics data. We're going to convert individual microsatellite info into population/patch-level multilocus expected heterozygosity data, as our measure of genetic diversity.
 
 We're going to do it in two steps: an intermediate dataset where we again extract useful variables from the `ID` string, and recode some other variables...
 
@@ -288,7 +288,7 @@ if (file.exists(here("R_output", "model1_front_expe.Rdata")))  {
 
 Ideally, we would have used a distribution actually accounting for the discrete nature of front locations values. We could have tried to fit a Poisson model instead of a lognormal one, but that would have been trading an approximation for another: data are **under**dispersed relative to the equivalent Poisson model (you can change the family in `mod_front` to poisson and check this). A [Conway Maxwell Poisson]( https://discourse.mc-stan.org/t/brms-and-conway-maxwell-poisson-distribution/7368/15) may solve this, but it's not 100% implemented yet in `brms`, and may be overkill, so we stay with the lognormal approximation. Results under lognormal or Poisson are close to identical anyway.
 
-Before we go forward, we need to check whether a power decay in the non-linear formula wouldn't be more appropriate.
+Before we go forward, we also need to check whether a power decay in the non-linear formula wouldn't be more appropriate.
 
 ```{r model-front-power}
 
@@ -331,16 +331,15 @@ mod_front2 <- brm(bf_front2,
 }
 ```
 
-
 Let's compare the two:
 
 ```{r comparison-model-front}
 loo_compare(loo_mod_front,loo_mod_front2)
 ```
 
-There is a slight advantage to the "power decay" model, but not conclusive (difference is less than 2 SEs). Because the "exponential decay" model has a very conclusive advantage for the *simulated* data, (see script 3) let's use it for the empirical data also, for consistency. Anyway, as the reader can see by looking at the model summaries, our qualitative conclusions for the empirical data don't change whether we use the power or exponential model (no detectable difference in asymptotic velocity in both cases). (The power model does tend to predict lower asymptotic speeds overall)
+There is a slight advantage to the "power decay" model, but not conclusive (difference is less than 2 SEs). Because the "exponential decay" model has a very conclusive advantage for the *simulated* data, (see script 3) let's use it for the empirical data also, for consistency. Anyway, as the reader can see by running the two models and looking at the model summaries, our qualitative conclusions for the empirical data don't change whether we use the power or exponential model (no detectable difference in asymptotic velocity in both cases). (The power model does tend to predict lower asymptotic speeds overall)
 
-Now let's have a look at the exponential model:
+Now let's have a more detailed look at the exponential model:
 
 ```{r summary-model-front}
 
@@ -465,18 +464,19 @@ if (file.exists(here("R_output", "model2bis_genet_expe.Rdata"))) {
   save(list = "mod_genetics2", file = here("R_output", "model2bis_genet_expe.Rdata"))
 }
 ## can't compare both models directly with LOO since the responses are not the same, logit(Hexp) versus Hexp
-## but let's check their performance:
+## but let's check their standardised performance:
 
 pp_check(mod_genetics, type = "loo_pit_overlay", nsamples = 2000)
 
 pp_check(mod_genetics2, type = "loo_pit_overlay", nsamples = 2000)
 
 ## some evidence that the Beta model is slightly more miscalibrated compare to the Student on logits
+## with prediction variance larger than data variance (see Gabry et al 10.1111/rssa.12378 and the bayesplot package doc)
 ## can also be seen using type="loo_pit_qq"
 #####
 ```
 
-While we can't directly compare the Student model on logits and the Beta model with LOO, we can compare the student with a Gaussian model on logits, which should be close to a Beta model in terms of behaviour:
+Good. For other posterior checks we can't directly compare the Student model on logits and the Beta model (like information criterion-like ones).But to reassure ourselves we can compare the student with a Gaussian model on logits, which should be close to a Beta model in terms of behaviour:
 
 
 ```{r model-genetics-logit-normal}
@@ -594,16 +594,16 @@ if (file.exists(here("R_output", "model3_popsize_expe.Rdata"))) {
 
 pp_check(mod_popsize) ##look at the other pp_check types too
 
-#loo1<-loo(mod_popsize,save_psis=TRUE)
-#
-#ppc_loo_pit_overlay(
-#  yrep = predict(mod_popsize, summary = FALSE),
-#  y = data_popsize$Peggs_est,
-#  lw = weights(loo1$psis)
-#)
+loo1<-loo(mod_popsize,save_psis=TRUE)
+
+ppc_loo_pit_overlay(
+  yrep = predict(mod_popsize, summary = FALSE),
+  y = data_popsize$Peggs_est,
+  lw = weights(loo1$psis)
+)
 ```
 
-It looks like this model does not reproduce the data very well, at all. Maybe we should do like with genetic diversity and use a student model on the logits instead?
+It looks *bad*. We don't even need standardisation via LOO-PIT to see this model does not reproduce the data very well, at all. The pattern of "misfit" is the same as for the genetic data. Maybe we should do like with genetic diversity and use a student model on the logits instead?
 
 ```{r}
 if (file.exists(here("R_output", "model3bis_popsize_expe.Rdata"))) {
@@ -636,17 +636,17 @@ ppc_dens_overlay(
 )
 
 
-#loo2<-loo(mod_popsize2,save_psis=TRUE)
-#ppc_loo_pit_overlay(
-#  yrep = predict(mod_popsize2, summary = FALSE),
-#  y = logit(data_popsize$Peggs_est),
-#  lw = weights(loo2$psis)
-#)
+loo2<-loo(mod_popsize2,save_psis=TRUE)
+ppc_loo_pit_overlay(
+  yrep = predict(mod_popsize2, summary = FALSE),
+  y = logit(data_popsize$Peggs_est),
+  lw = weights(loo2$psis)
+)
 
 
 ```
 
-It does look much better. Still not perfect, but better
+It does look much better. Still not perfect, but better. And without an actual population dynamics model, we probably have nothing better to estimate the "extreme" values of the distribution accurately. So let's carry on with the Student model:
 
 ```{r}
 summary(mod_popsize2)
@@ -665,7 +665,7 @@ The conclusion from the second model is that there is no clear evidence that tre
 
 #### A bivariate model for *K* and *v*
 
-Now we can use the model formulas previously selected for the asymptotic speed *v* and for *K*, to test whether among-replicate variation in *K* is linked to among-replicate variation in *v*, and whether this correlation depends on treatment. We can do that by refitting the previous univariate models into a bivariate model, with a slight alteration to the replicate-level random-effects for *K* and *v* to make their (co)variance treatment-specific:
+Now we can use the model formulas previously selected for the asymptotic speed *v* and for *K*, to test whether among-replicate variation in *K* is linked to among-replicate variation in *v*, and whether this correlation depends on treatment. We can do that by refitting the previous univariate models into a bivariate model, with just a slight alteration to the replicate-level random-effects for *K* and *v* to make their (co)variance treatment-specific:
 
 ```{r}
 bf_popsize<- bf(logit(Peggs_est) ~ 0 + Treatment + (1 | Macro) + (1 | 1 | gr(landscapeID,by=Treatment)), family = student)
@@ -758,6 +758,8 @@ p2 <- data_front %>%
   ungroup() %>%
   ggplot() +
   stat_eye(aes(x = Treatment, y = .value, fill = Treatment), slab_alpha = 0.9, .width=c(0.001,0.95), point_interval = mean_hdi) +
+  #geom_jitter(data = subset(data_front, Generation == 13), 
+  #           aes(x = Treatment, y = front/Generation, fill = Treatment), pch = 21, size = 2) +
   scale_fill_manual(values = TRTpalette) +
   scale_x_discrete("Landscape type") +
   scale_y_continuous("Mean asymptotic velocity (patches/generation)") +
@@ -774,13 +776,13 @@ p1 / p2 + plot_annotation(tag_levels = "A") + plot_layout(guides = "collect") &
 ```{r velocity-comparison}
 data_front %>%
   ungroup() %>%
-  mutate(landscapeID = landscapeID[1], Generation = 1) %>%
-  select(Treatment, landscapeID, Generation) %>%
+  mutate(landscapeID = landscapeID[1], Generation = 1) %>% #the landscape variable is a dummy that is ignored; not needed for recent versions of brms
+  select(Treatment, landscapeID, Generation) %>% 
   distinct() %>%
-  add_fitted_draws(mod_front, nlpar = "logspeedasym", re_formula = NA) %>%
+  add_fitted_draws(mod_front, nlpar = "logspeedasym", re_formula = NA) %>% #re_formula = NA is *why* the landscape variable is ignored
   mutate(.value = exp(.value)) %>% ## backtransformation
   compare_levels(variable = .value, by = Treatment) %>%
-  mean_hdi() # no differences
+  mean_hdi() # no differences in asymptotic speed
 ```
 
 
@@ -887,11 +889,11 @@ preds_K<-data_popsize %>%
 
 p1 <- left_join(preds_v,preds_K) %>% 
   ggplot()+
-  geom_segment(aes(x=lower_K*450,xend=upper_K*450,y=v,yend=v),col="grey85")+
-  geom_segment(aes(x=K*450,xend=K*450,y=lower_v,yend=upper_v),col="grey85")+
-  geom_point(aes(K*450,v,fill=Treatment),pch=21,size=2)+
+  geom_segment(aes(x=lower_K,xend=upper_K,y=v,yend=v),col="grey85")+
+  geom_segment(aes(x=K,xend=K,y=lower_v,yend=upper_v),col="grey85")+
+  geom_point(aes(K,v,fill=Treatment),pch=21,size=2)+
   scale_y_continuous(expression(paste("predicted asymptotic velocity  ", italic(v))))+
-  scale_x_continuous(expression(paste("predicted ", italic(K), " (mean population size in starting patch)")))+
+  scale_x_continuous(expression(paste("predicted ", italic(K), " (mean % of hosts parasitized in starting patch)")))+
   scale_fill_manual(values=TRTpalette)+
   facet_wrap(~Treatment)+
   theme_half_open(11) +
