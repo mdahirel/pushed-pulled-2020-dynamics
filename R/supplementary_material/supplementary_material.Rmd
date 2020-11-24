@@ -747,6 +747,86 @@ $$
 $$
 All other parameters and all priors are as in the corresponding univariate models.
 
+# S6 - Supplementary figures for main text models
+
+## Expansion velocity, simulated data
+
+```{r load-data-s6-expansion}
+## see main script 3 for details about this code chunk
+
+data <- read_csv(file = here("NetLogo_output/model-output.csv"))
+
+data_front <- data %>%
+  filter(is.edge == TRUE) %>%
+  mutate(front = pxcor) %>%
+  mutate(K = factor(K)) %>% 
+  mutate(treatment = fct_recode(treatment,`weak Allee effect` = "weak Allee effect (a = 0.95)"))
+data_front_part <- data_front %>% filter((ticks %% 5) == 0)
+
+load(here("R_output", "model5_front_IBM.Rdata"))
+
+load(here("R_output", "model5bis_front_power_IBM.Rdata"))
+```
+
+
+```{r figure-s6-1a, fig.width=10}
+
+newdata <- data_front_part %>% 
+  mutate(treatment = relevel(factor(treatment), ref = "reference")) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced connectivity", after = Inf)) %>%
+  mutate(treatment = fct_relevel(treatment, "reduced + DDD", after = Inf)) 
+
+newdata %>% 
+  select(treatment, K)  %>% 
+  distinct() %>%
+  expand_grid(ticks = c(1,c(1:20)*5)) %>%
+  add_fitted_draws(mod_front_IBM,re_formula=NA) %>%
+  ungroup() %>%
+  ggplot() +
+  stat_pointinterval(data = newdata, aes(x = ticks, y = front/ticks, group = ticks),col="grey",alpha=0.9) +
+  stat_lineribbon(aes(x = ticks, y = .value/ticks),
+                  .width = 0.95, alpha = 0.5, point_interval = mean_hdi) +
+  scale_y_continuous("mean speed since start of experiment (patches per generation)") +
+  scale_x_continuous("time since start (generations)")+
+  facet_grid(rows=vars(K), cols=vars(treatment)) +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95") + 
+  labs(title="with exponential model predictions superimposed") + 
+  theme(legend.position = "none")
+```
+
+
+```{r figure-s6-1b, fig.width=10}
+
+newdata %>% 
+  select(treatment, K)  %>% 
+  distinct() %>%
+  expand_grid(ticks = c(1,c(1:20)*5)) %>%
+  add_fitted_draws(mod_front_IBM2,re_formula=NA) %>%
+  ungroup() %>%
+  ggplot() +
+  stat_pointinterval(data = newdata, aes(x = ticks, y = front/ticks, group = ticks),col="grey",alpha=0.9) +
+  stat_lineribbon(aes(x = ticks, y = .value/ticks),
+                  .width = 0.95, alpha = 0.5, point_interval = mean_hdi) +
+  scale_y_continuous("mean speed since start of experiment (patches per generation)") +
+  facet_grid(rows=vars(K), cols=vars(treatment)) +
+  theme_half_open(11) +
+  background_grid(colour.major = "grey95", colour.minor = "grey95")+
+  labs(title="with power-law model predictions superimposed") + 
+  theme(legend.position = "none")
+```
+
+**Figure S6.1** Observed and predicted velocities (distance to the start divided time since start) as a function of $K$, time since start and treatment. Observed simulation data are summarised by their means and 2.5/97.5% quantiles to keep the figure readable. The mean prediction curves are displayed along with their 95% credible bands. Note how predictions based on the power-law model start to systematically underestimate true speeds towards the end of the simulations, while the exponential predictions catch the fact speed has converged.
+
+## Expansion velocity, experimental data
+
+
+**Figure S6-2** Same as **S6-1**, but for experimental data.
+
+## Genetic diversity, simulated data
+
+**Figure S6-3**
+
 # S6 - Summary tables for main text models
 
 We here present posterior means and 95% credible intervals for the fixed effect parameters of the models discussed in the main text. For conciseness, we focus on fixed effect parameters as they are the ones that interest us in the present study; the interested reader can get the same information for random effect and distributional parameters by running the corresponding `Rmd` scripts (scripts 1 and 3), which contains various summary calls. Parameter names are as in **Supplementary Material S5**.
@@ -756,143 +836,143 @@ We here present posterior means and 95% credible intervals for the fixed effect 
 **Table S6.1** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *simulated* range expansions
 
 ```{r table6-1}
-load(here("R_output", "model3_front_IBM.Rdata"))
-
-mod_front %>%
-  posterior_samples() %>%
-  select(starts_with("b_")) %>% #we keep only fixed effects coefs
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>% #rounding everything for consistency
-  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", name)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "density"), "density-dependent dispersal", treatment)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "connectivity"), "reduced connectivity", treatment)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "Allee"), "weak Allee effect", treatment)) %>%
-  mutate(K = ifelse(str_detect(name, "225"), 225, 450)) %>%
-  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
-  select(parameter, K, treatment, entry) %>%
-  pivot_wider(names_from = treatment, values_from = entry) %>%
-  arrange(parameter == "logitspeedasym") %>%
-  mutate(name = c(rep("$\\log_{10}(\\lambda)$", 2), rep("$\\mathrm{logit}(v_{t \\to \\infty})$", 2))) %>%
-  mutate(name = paste(name, ", $K$", "=", K, sep = "")) %>%
-  select(name, reference, `density-dependent dispersal`, `weak Allee effect`, `reduced connectivity`) %>%
-  column_to_rownames(var = "name") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#load(here("R_output", "model3_front_IBM.Rdata"))
+#
+#mod_front %>%
+#  posterior_samples() %>%
+#  select(starts_with("b_")) %>% #we keep only fixed effects coefs
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>% #rounding everything for consistency
+#  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", name)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "density"), "density-dependent dispersal", treatment)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "connectivity"), "reduced connectivity", treatment)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "Allee"), "weak Allee effect", treatment)) %>%
+#  mutate(K = ifelse(str_detect(name, "225"), 225, 450)) %>%
+#  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
+#  select(parameter, K, treatment, entry) %>%
+#  pivot_wider(names_from = treatment, values_from = entry) %>%
+#  arrange(parameter == "logitspeedasym") %>%
+#  mutate(name = c(rep("$\\log_{10}(\\lambda)$", 2), rep("$\\mathrm{logit}(v_{t \\to \\infty})$", 2))) %>%
+#  mutate(name = paste(name, ", $K$", "=", K, sep = "")) %>%
+#  select(name, reference, `density-dependent dispersal`, `weak Allee effect`, `reduced connectivity`) %>%
+#  column_to_rownames(var = "name") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 **Table S6.2** Posterior means [95% credible intervals] for the model fitted to analyse expansion speeds of *experimental* range expansions
 
 ```{r table6-2}
-
-load(here("R_output", "model1_front_expe.Rdata"))
-
-mod_front %>%
-  posterior_samples() %>%
-  select(starts_with("b_")) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
-  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", "reduced connectivity")) %>%
-  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
-  select(parameter, treatment, entry) %>%
-  pivot_wider(names_from = treatment, values_from = entry) %>%
-  mutate(name = c("$\\log_{10}(\\lambda)$", "$\\ln(v_{t \\to \\infty})$", "$\\ln(v_{t = 1})$")) %>%
-  select(name, reference, `reduced connectivity`) %>%
-  column_to_rownames(var = "name") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#
+#load(here("R_output", "model1_front_expe.Rdata"))
+#
+#mod_front %>%
+#  posterior_samples() %>%
+#  select(starts_with("b_")) %>%
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
+#  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", "reduced connectivity")) %>%
+#  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
+#  select(parameter, treatment, entry) %>%
+#  pivot_wider(names_from = treatment, values_from = entry) %>%
+#  mutate(name = c("$\\log_{10}(\\lambda)$", "$\\ln(v_{t \\to \\infty})$", "$\\ln(v_{t = 1})$")) %>%
+#  select(name, reference, `reduced connectivity`) %>%
+#  column_to_rownames(var = "name") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 ## Genetic diversity
 
 
 ```{r table6-genetdata}
-load(here("R_output", "model4_genetics_IBM.Rdata"))
+#load(here("R_output", "model4_genetics_IBM.Rdata"))
 ```
 
 **Table S6.3** Posterior means [95% credible intervals] for the model fitted to analyse genetic diversity of *simulated* range expansions
 
 ```{r table6-3}
-mod_genetics %>%
-  posterior_samples() %>%
-  select(starts_with(c("b_logdecay"))) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
-  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", name)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "density"), "density-dependent dispersal", treatment)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "connectivity"), "reduced connectivity", treatment)) %>%
-  mutate(treatment = ifelse(str_detect(treatment, "Allee"), "weak Allee effect", treatment)) %>%
-  mutate(K = ifelse(str_detect(name, "225"), 225, 450)) %>%
-  mutate(location = ifelse(str_detect(name, "is.frontFALSE"), "core", "edge")) %>%
-  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
-  select(parameter, K, treatment, location, entry) %>%
-  pivot_wider(names_from = treatment, values_from = entry) %>%
-  mutate(name = c(rep("$\\log_{10}(\\lambda)$", 4))) %>%
-  mutate(name = paste(name, ", $K$", "=", K, ", ", location, " patches", sep = "")) %>%
-  select(name, reference, `density-dependent dispersal`, `weak Allee effect`, `reduced connectivity`) %>%
-  column_to_rownames(var = "name") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#mod_genetics %>%
+#  posterior_samples() %>%
+#  select(starts_with(c("b_logdecay"))) %>%
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
+#  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", name)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "density"), "density-dependent dispersal", treatment)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "connectivity"), "reduced connectivity", treatment)) %>%
+#  mutate(treatment = ifelse(str_detect(treatment, "Allee"), "weak Allee effect", treatment)) %>%
+#  mutate(K = ifelse(str_detect(name, "225"), 225, 450)) %>%
+#  mutate(location = ifelse(str_detect(name, "is.frontFALSE"), "core", "edge")) %>%
+#  mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
+#  select(parameter, K, treatment, location, entry) %>%
+#  pivot_wider(names_from = treatment, values_from = entry) %>%
+#  mutate(name = c(rep("$\\log_{10}(\\lambda)$", 4))) %>%
+#  mutate(name = paste(name, ", $K$", "=", K, ", ", location, " patches", sep = "")) %>%
+#  select(name, reference, `density-dependent dispersal`, `weak Allee effect`, `reduced connectivity`) %>%
+#  column_to_rownames(var = "name") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 ```{r table6-3b}
-mod_genetics %>%
-  posterior_samples() %>%
-  select(starts_with(c("b_logitVmax"))) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(`all treatments` = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
-  mutate(name = "$\\mathrm{logit}(V_{max})$") %>%
-  select(name, `all treatments`) %>%
-  column_to_rownames(var = "name") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#mod_genetics %>%
+#  posterior_samples() %>%
+#  select(starts_with(c("b_logitVmax"))) %>%
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(`all treatments` = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
+#  mutate(name = "$\\mathrm{logit}(V_{max})$") %>%
+#  select(name, `all treatments`) %>%
+#  column_to_rownames(var = "name") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 
 **Table S6.4** Posterior means [95% credible intervals] for the model fitted to analyse genetic diversity of *experimental* range expansions
 
 ```{r table6-4data}
-load(here("R_output", "model2_genet_expe.Rdata"))
+#load(here("R_output", "model2_genet_expe.Rdata"))
 ```
 
 
 ```{r table6-4}
-mod_genetics %>%
-  posterior_samples() %>%
-  select(starts_with(c("b_logdecay"))) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
-  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", "reduced connectivity")) %>%
-  mutate(parameter = ifelse(!str_detect(name, "is.edge"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)", "difference edge-core in decay rate ($\\beta_{2}$)")) %>%
-  select(parameter, treatment, entry) %>%
-  pivot_wider(names_from = treatment, values_from = entry) %>%
-  column_to_rownames(var = "parameter") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#mod_genetics %>%
+#  posterior_samples() %>%
+#  select(starts_with(c("b_logdecay"))) %>%
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(entry = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
+#  mutate(treatment = ifelse(str_detect(name, "reference"), "reference", "reduced connectivity")) %>%
+#  mutate(parameter = ifelse(!str_detect(name, "is.edge"), "average $\\log_{10}$(decay rate of genetic diversity) ($\\beta_{1}$)", "difference #edge-core in decay rate ($\\beta_{2}$)")) %>%
+#  select(parameter, treatment, entry) %>%
+#  pivot_wider(names_from = treatment, values_from = entry) %>%
+#  column_to_rownames(var = "parameter") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 ```{r table6-4b}
-mod_genetics %>%
-  posterior_samples() %>%
-  select(starts_with(c("b_logitH0"))) %>%
-  pivot_longer(everything()) %>%
-  group_by(name) %>%
-  mean_hdi() %>%
-  mutate(`all treatments` = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
-  mutate(name = "logit of initial genetic diversity ($\\beta_{0}$)") %>%
-  select(name, `all treatments`) %>%
-  column_to_rownames(var = "name") %>%
-  kable(format = "html") %>%
-  kable_styling()
+#mod_genetics %>%
+#  posterior_samples() %>%
+#  select(starts_with(c("b_logitH0"))) %>%
+#  pivot_longer(everything()) %>%
+#  group_by(name) %>%
+#  mean_hdi() %>%
+#  mutate(`all treatments` = paste(round(value, 2), " [", round(.lower, 2), ", ", round(.upper, 2), "]", sep = "")) %>%
+#  mutate(name = "logit of initial genetic diversity ($\\beta_{0}$)") %>%
+#  select(name, `all treatments`) %>%
+#  column_to_rownames(var = "name") %>%
+#  kable(format = "html") %>%
+#  kable_styling()
 ```
 
 
