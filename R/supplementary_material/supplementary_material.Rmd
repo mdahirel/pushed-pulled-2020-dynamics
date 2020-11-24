@@ -524,7 +524,7 @@ seppop(genmat) %>% #we split by Mix, and for each mix we obtain some popgen metr
 
 # S5 - Detailed description of models (main text)
 
-We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models described in here and in S10 use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ to denote a half-normal distribution based on a $\math{Normal}(\mu,\sigma)$ distribution.
+We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models described in here and in S7 use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
 
 ## S5.1 - Genetic diversity, experimental data
 
@@ -533,7 +533,7 @@ We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a
 $$ 
 \mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu )
 $$
-where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the scale and $\nu$ the number of degrees of freedom. 
+where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the distribution scale parameter and $\nu$ the number of degrees of freedom. 
 
 Based on theory, we expect average genetic diversity to decline exponentially with time: 
 
@@ -593,7 +593,7 @@ An alternative model can be written, where $H_{x,i,t} \sim \mathrm{Beta}(\mu_{x,
 
 ## S5.2 - Genetic diversity, simulated data
 
-In our simulations, it is not possible to analyse genetic diversity using the model(s) described in S5.1, in large part because simulated diversity data contains many zeroes, which means models using either logit transformations or Beta distributions are inappropriate.
+In our simulations, it is not possible to analyse genetic diversity using the model(s) described in S5.1, in large part because simulated diversity data contains many zeroes, which means models using both logit transformations and Beta distributions are inappropriate.
 
 As an alternative, we can use the model proposed by Gandhi *et al.* [-@gandhiCooperationMitigatesDiversity2019] in which, for a given treatment and location combination $j$ at a given time $t$ (in generations from release), the expected among-replicate variance in the frequencies of either one of the two alleles $V_{j,t}$ can be described this way:
 
@@ -614,13 +614,13 @@ In both experimental and simulation data, the location $X_{i,t}$ of the expansio
 
 $$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\ln (v_{i,t} \times t), \sigma_{d}) $$
 
-where $v_{i,y}$ denotes the expansion speed since release, and $\sigma{d}$ is the residual standard deviation of the log-distances.
+where $v_{i,t}$ denotes the expansion speed over the $t$ generations since release, and $\sigma{d}$ is the residual standard deviation of the log-distances.
 
 The expansion speed $v_{i,y}$ can then be modelled as following:
 
 $$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1))$$
 
-, that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t \to \infty}$, with the rate of "decay" to the asymptotic speed being $\lambda_{i}$.
+, that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t \to \infty}$, with the rate of exponential "decay" to the asymptotic speed being $\lambda_{i}$.
   
 In the experiment, all three parameters depend on treatment, and on replicate identity:
 
@@ -680,30 +680,72 @@ where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random e
 
 We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathrm{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
 
+Alternatively, one can assume (based on theory) that speed converges to the asymptote following an power law, rather than an exponential:
+
+$$
+v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times t^{-\lambda_{i}}
+$$
+
+(with all other elements of the models remaining otherwise unchanged). However, model comparison (see code) show that performs much worse than the exponential in the context of the simulated data.
+
 ## S5.4 - Population size in core patch, experimental data
 
 We first assumed the parasitism rate in the release patch $P_{i,t,m}$ observed by macro $m$ in replicate $i$ after $t$ generations can be modelled using a Beta model as follow:
 
 $$ 
-P_{i,t,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m}) = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{m}\\
-\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
-\gamma_{m} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
+P_{i,t,m} \sim \mathrm{Beta}(K_{i,m}, \phi) \\
+\mathrm{logit}(K_{i,m}) = \beta_{\text{TREATMENT}[i]} +\eta_{i} + \theta_{m}\\
+\eta_{i} \sim \mathrm{Normal}(0,\sigma_{\eta}) \\
+\theta_{m} \sim \mathrm{Normal}(0,\sigma_{\theta}) \\
 $$
-, where $\alpha$ denote random effects of replicate and $\gamma$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
+, where $\eta$ denote random effects of replicate and $\theta$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 However, posterior checks revealed this model predicted more variability than was in the data, like for genetic experimental data. So, like with genetic experimental data, we shifted to a Student model on logit-transformed data:
 
 $$ 
-\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{i,m}), \sigma_{d} , \nu) \\
-\mathrm{logit}(\mu_{i,m}) = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{m}\\
-\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
-\gamma_{m} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
+\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu) \\
 $$
-Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
+, with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
 
 ## S5.5 - correlation between K and v, experimental data
 
+To analyse the among-replicate correlation between the asymptotic speed and the carrying capacity, we simply combine the two univariate models described above for front location (S5.3) and population size (S5.4). We simply adjust the replicate-level random effect variance-covariance matrix to (1) link the two model (2) make it treatment-specific, in order to obtain treatment-specific correlations ($i$ denotes the replicate, $j$ the treatment, and parameter names are as in S5.3 and S5.4):
+
+$$
+\begin{bmatrix}
+\alpha_{i,j} \\
+\gamma_{i,j} \\
+\zeta_{i,j} \\
+\eta_{i,j} \\
+\end{bmatrix} \sim 
+\mathrm{MVNormal}(
+\begin{bmatrix}
+0\\
+0\\
+0\\
+0\\
+\end{bmatrix},\boldsymbol{\Omega}_{j})
+$$
+
+with $\boldsymbol{\Omega}_{j}$ the now treatment-specific covariance matrix and the corresponding correlation matrix:
+
+$$
+\boldsymbol{\Omega}_{j} = 
+\begin{bmatrix}
+\sigma_{\alpha[j]} & 0 & 0 & 0 \\
+0 & \sigma_{\gamma[j]} & 0 & 0 \\
+0 & 0 & \sigma_{\zeta[j]} & 0 \\
+0 & 0 & 0 & \sigma_{\eta[j]} \\
+\end{bmatrix} 
+\times \boldsymbol{\mathrm{R}}_{j} \times
+\begin{bmatrix}
+\sigma_{\alpha[j]} & 0 & 0 & 0 \\
+0 & \sigma_{\gamma[j]} & 0 & 0 \\
+0 & 0 & \sigma_{\zeta[j]} & 0 \\
+0 & 0 & 0 & \sigma_{\eta[j]} \\
+\end{bmatrix} 
+$$
+All other parameters and all priors are as in the corresponding univariate models.
 
 # S6 - Summary tables for main text models
 
