@@ -524,7 +524,7 @@ seppop(genmat) %>% #we split by Mix, and for each mix we obtain some popgen metr
 
 # S5 - Detailed description of models (main text)
 
-We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models described in here and in S10 use the (mean, precision) parametrisation of the Beta distribution.
+We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models described in here and in S10 use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ to denote a half-normal distribution based on a $\math{Normal}(\mu,\sigma)$ distribution.
 
 ## S5.1 - Genetic diversity, experimental data
 
@@ -533,7 +533,7 @@ We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a
 $$ 
 \mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu )
 $$
-where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the residual standard deviation and $\nu$ the number of degrees of freedom. 
+where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the scale and $\nu$ the number of degrees of freedom. 
 
 Based on theory, we expect average genetic diversity to decline exponentially with time: 
 
@@ -679,6 +679,30 @@ $$
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
 We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathrm{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
+
+## S5.4 - Population size in core patch, experimental data
+
+We first assumed the parasitism rate in the release patch $P_{i,t,m}$ observed by macro $m$ in replicate $i$ after $t$ generations can be modelled using a Beta model as follow:
+
+$$ 
+P_{i,t,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
+\mathrm{logit}(\mu_{i,m}) = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{m}\\
+\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+\gamma_{m} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
+$$
+, where $\alpha$ denote random effects of replicate and $\gamma$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
+
+However, posterior checks revealed this model predicted more variability than was in the data, like for genetic experimental data. So, like with genetic experimental data, we shifted to a Student model on logit-transformed data:
+
+$$ 
+\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{i,m}), \sigma_{d} , \nu) \\
+\mathrm{logit}(\mu_{i,m}) = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{m}\\
+\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+\gamma_{m} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
+$$
+Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
+
+## S5.5 - correlation between K and v, experimental data
 
 
 # S6 - Summary tables for main text models
@@ -889,16 +913,6 @@ $$
 $$
 As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
 
-## <!--to move to main text + add logit-student and bivariate model--> S10.5 - Differences in equilibrium population size between experimental treatments
 
-We assumed the parasitism rate in the release patch $P_{i,t,m}$ observed by macro $m$ in replicate $i$ after $t$ generations can be modelled as follow:
-
-$$ 
-P_{i,t,m} \sim \mathrm{Beta}(\mu_{i,t,m}, \phi) \\
-\mu_{i,t,m} = \beta_{\text{TREATMENT}[i]} +\alpha_{i} + \gamma_{m}\\
-\alpha_{i} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
-\gamma_{m} \sim \mathrm{Normal}(0,\sigma_{\gamma}) \\
-$$
-, where $\alpha$ denote random effects of replicate and $\gamma$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 # References
