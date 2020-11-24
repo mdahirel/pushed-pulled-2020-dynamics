@@ -29,7 +29,7 @@ library(patchwork)
 
 (see manuscript/preprint text for more context)
 
-Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way.
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that because (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, it may create positive density-dependent spread through another way.
 
 The aim of the model is to test this prediction using information on front velocity and genetic diversity in the front and core patches of expanding metapopulations. To validate the simulation, we also set up treatments with Allee effects and (classical) density-dependent dispersal. We focus on relatively "low" population sizes, as they are where our effect of interest is present, and have been understudied in theory. We look at two populations sizes because of previous research showing equilibrium population size *K* influences the dynamics of pushed waves, and to have a qualitative point of comparison in case experimental data also involve shifts in *K*.
 
@@ -117,7 +117,7 @@ plot_disp/plot_fec + plot_layout(guides = 'collect') + plot_annotation(tag_level
 
 
 
-Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object (we encourage readers to look at the info pane in the .nlogo model file for details):
+Now we need to add all of this (plus information on the variables that stay constant, which output variables will we save...) to the experiment slot of the NL object (we encourage readers to look at the info pane in the .nlogo model file for details)(and also the various help pages of the `nlrx` package):
 
 ```{r set-experiment}
 
@@ -134,7 +134,8 @@ nl_object@experiment <- experiment(
   metrics = c("ticks"),
   metrics.patches = c("pxcor", "N_predispersal", "N_postdispersal", "N_allele0", "N_allele1"),
   constants = list(
-    "trait_variation" = "\"reshuffled\"", ### note how string variable/csts must be entered ### traits are redrawn at random every generation
+    "trait_variation" = "\"reshuffled\"", ### note how string variable/csts must be entered 
+    ### traits are redrawn at random every generation
     ## so no evolution . Moot because no trait variation (see below), but still
     # "K"=450,
     # "start_allee_thres"=5,
@@ -164,7 +165,7 @@ And we're go for running the simulations! We set a "distinct" simulation design 
 
 set.seed(1989) ## we set a seed here to guarantee the seeds selected below are the same everytime
 nl_object@simdesign <- simdesign_distinct(nl = nl_object, nseeds = nreplicates)
-#nl_object@simdesign@simseeds<-1:nreplicates #or we can rewrite the nseeds here (to guarantee they are all different)
+#nl_object@simdesign@simseeds<-1:nreplicates #or we can rewrite the seeds here (to guarantee they are all different)
 length(unique(nl_object@simdesign@simseeds))==nreplicates #check that all generated seeds are different
 exp1_2020 <- run_nl_all(nl_object)
 
@@ -174,7 +175,7 @@ exp1_2020 <- run_nl_all(nl_object)
 
 # Output
 
-We can now process the result for the main analyses (and their 5-treatment equivalent in supplementary material):
+We can now process the result for the main analyses:
 
 ```{r processing-output-presaving}
 
