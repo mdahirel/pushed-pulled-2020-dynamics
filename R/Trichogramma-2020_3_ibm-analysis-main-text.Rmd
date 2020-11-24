@@ -38,7 +38,7 @@ library(here)
 
 (see manuscript/preprint text, as well as scripts 1 and 2 in this folder, for more context)
 
-Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way. 
+Pushed expansion waves are generated when spread is positively density-dependent, i.e. when dispersal and/or growth is positively density-dependent. Pushed waves have mostly been studied using the latter (which corresponds to Allee effects), but recent works have started to focus on density-dependent dispersal, as it is common in nature. We propose to expand on the effects of variable dispersal by looking at the links between connectivity and stochasticity in dispersal. We predict that (at low population sizes) reduced connectivity should lead to increased stochasticity in dispersal success and establishment difficulties, creating positive density-dependent spread through another way. 
 
 # Analysis
 
@@ -97,15 +97,16 @@ The situation here is bit more complex. We can't simply use the heterozygosity p
  ggplot(data) +geom_line(aes(x=ticks,y=Hexp,group=replicateID,col=treatment))+facet_wrap(~treatment+is.edge+K)
 ### lots of zero, can't use
 ```
-and zeroes don't work well with the stat methods we want to use.
+and zeroes don't work well with the stat methods we want to use (which involve logits to accurately deal with % data, which heterozygosity data are _ and using zero-inflated methods while using a non-linear theoretical formula is ... non-intuitive).
 
-Fortunately, there is a way around this by using the among replicates variance in allelic frequencies rather than using heterozygosity directly (see Gandhi et al. 2019 PNAS)
+Fortunately, there is a way around this that doesn't involve giving up and modelling as a gaussian (which would lead to wrongly distributed errors): by using the among replicates variance in allelic frequencies rather than using heterozygosity directly (see Gandhi et al. 2019 PNAS)
 ```{r data-genetics2}
 #### we'll use method variance in fraction (gandhi 2019 pnas).
 data_genetics <- data %>%
   group_by(ticks, treatment, is.edge, K) %>% # we group by "type" of patch and generation
   summarise(varP1 = var(P1), varP0 = var(P0)) %>% # we can use either. They are going to be the same for a biallelic locus: var = p(1-p)
   mutate(K = factor(K)) %>% 
+  ungroup() %>% 
   mutate(treatment = fct_recode(treatment,`weak Allee effect` = "weak Allee effect (a = 0.95)"))
 
 ```
@@ -213,6 +214,7 @@ loo_compare(loo_mod_front_IBM,loo_mod_front_IBM2)
   # computation time and memory requirements
   # and there are too many problematic obs to use reloo
   # so we'll have to roll with them as is
+  # the difference between the two models is so big, and the "problematic" obs so rare it shouldn't be a problem
 
 #but let's still split the elpd in problematic and non-problematic obs
 #to see if the difference is caused by the problematic obs
@@ -361,7 +363,7 @@ newdata %>%
   mutate(.value = invlogit(.value)) %>% 
   ungroup() %>%
   ggplot() +
-  geom_jitter(data=subset(newdata,ticks==100),  #let's plots the observed speeds at t=100, for illustration
+  geom_jitter(data=subset(newdata,ticks==100),  #let's plot the observed speeds at t=100, for illustration
               aes(factor(K),front/ticks),col="grey",alpha=0.5)+
   geom_hline(data = thresholds, aes(yintercept = threshold_value, lty = threshold_type)) +
   stat_eye(aes(x = factor(K), group = K, y = .value), normalize = "xy", .width=c(0.001,0.95)) +
