@@ -1,4 +1,4 @@
-# Connectedness and pushed/pulled range expansions
+# Connectivity and pushed/pulled range expansions
 
 
 #### 
@@ -16,7 +16,7 @@
 - the source code for the Netlogo model in the `Netlogo_model` folder
 - the R scripts (including detailed information about the analyses) are in the `R` folder. There are four `Rmd` files: 
     - the first one (`Trichogramma-2020_1_experiment-main-text`) corresponds to the analysis of the experimental data
-    - the second one (`Trichogramma-2020_2_ibm-creation.Rmd`) uses the `nlrx` package and the Netlogo model to run simulations and save some metrics of interest to `Netlogo_output`
+    - the second one (`Trichogramma-2020_2_ibm-creation`) uses the `nlrx` package and the Netlogo model to run simulations and save some metrics of interest to `Netlogo_output`
     - the third one (`Trichogramma-2020_3_ibm-analysis-main-text`) corresponds to the main analysis of these simulated data
     - the fourth one corresponds to the "Supplementary Material" file. It can be run just as the other scripts, or knitted to produce the Supplementary Material `html` file. It is in its own subfolder along with bibliography files used when knitting.
 
