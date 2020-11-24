@@ -286,7 +286,7 @@ data_validate %>%
   geom_hline(aes(yintercept = obs$.value[1] / 450), size = 1.2) +
   geom_hline(aes(yintercept = obs$.lower[1] / 450), lty = 2) +
   geom_hline(aes(yintercept = obs$.upper[1] / 450), lty = 2) +
-  stat_eye(aes(Macro, .value)) +
+  stat_eye(aes(Macro, .value), .width=c(0.01,0.95)) +
   scale_y_continuous("Parasitism rate", limits = c(0.25, 0.75)) +
   theme_bw()
 ```
@@ -386,7 +386,8 @@ data_G0_avg <- data_G0 %>%
 p1 <- newdata %>%
   add_fitted_draws(mod_G0, re_formula = NA) %>%
   ggplot() +
-  stat_eye(aes(x = Treatment, y = .value * 4, fill = Treatment), .width = c(0.66, 0.95), slab_alpha = 0.9, point_interval = mean_hdi) +
+  stat_eye(aes(x = Treatment, y = .value * 4, fill = Treatment), 
+           .width = c(0.01, 0.95), slab_alpha = 0.9, point_interval = mean_hdi) +
   ## we put both observed points (by macros) and the indicative averages for each each landscape
   geom_point(data = data_G0, aes(x = jitteredTRT, y = distmean, col = Treatment), fill = "white", pch = 21, alpha = 0.8) +
   geom_point(data = data_G0_avg, aes(x = jitteredTRT, y = distmean, fill = Treatment), pch = 21, size = 2) +
@@ -402,7 +403,8 @@ p2 <- newdata %>%
   ungroup() %>%
   compare_levels(variable = .value, by = Treatment) %>%
   ggplot() +
-  stat_eye(aes(x = Treatment, y = .value * 4), .width = c(0.66, 0.95), fill = "grey", point_interval = mean_hdi) +
+  stat_eye(aes(x = Treatment, y = .value * 4),
+           .width = c(0.01, 0.95), fill = "grey", point_interval = mean_hdi) +
   scale_x_discrete("", labels = "") +
   scale_y_continuous("Difference between treatments",
     limits = c(-0.2, 2.5) - 4 * invlogit(fixef(mod_G0)["Treatmentreference", "Estimate"])
@@ -415,7 +417,7 @@ p1 + p2 + plot_layout(guides = "collect", widths = c(4, 1)) & theme_bw() &
 
 ```
 
-**Supplementary Figure S3.1.** Left: Mean egg-laying distance from release patch as a function of treatment. Colored areas: posterior distribution (assuming total fecundity fixed to its average); black dots and segments: posterior mean and 66/95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate. Right: posterior difference between the two experimental treatments.
+**Supplementary Figure S3.1.** Left: Average egg-laying distance from release patch as a function of treatment. Colored areas: posterior distributions of the averages; black dots and segments: posterior mean and 95% credible intervals; empty colored dots: estimated values for each macro; full colored dots: averages across macros for each replicate. Right: posterior difference between the two experimental treatments.
 
 # S4 - Microsatellite genotyping, detailed methods
 
@@ -436,7 +438,7 @@ For each individual, 1.5µL of the PCR product was mixed with 9.8µL of a mix ob
 
 All loci are polymorphic when looking at the entire dataset (Supplementary Table S4.1). Information on each marker, including allelic richness over the whole set of genotyped individuals, is presented Supplementary Table S4.1. Information about genetic diversity and whether alleles frequencies followed the Hardy-Weinberg equilibrium **at the start of the experiment** is presented Supplementary Table S4.2. 
 
-Summary data confirm that all 3 strains are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis). So, barring widespread mutation, this seemingly fixed locus must simply represent sampling error at t = 0.
+Summary data confirm that all 3 strains are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis). So, barring multiple mutations, this seemingly fixed locus must simply represent sampling error at t = 0.
 
 
 **Supplementary Table S4.1**: Primer pairs used for the PCR set of the multiplex panel. For each of the 19 loci, the table includes: the repeat motifs in the sequence used to design primers, sequence and fluorescent dye label used for each primer, the observed number of alleles and the allelic size range. 
@@ -525,9 +527,9 @@ seppop(genmat) %>% #we split by Mix, and for each mix we obtain some popgen metr
 ```
 
 
-# S5 - Detailed description of models (main text)
+# S5 - Detailed description of models
 
-We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models described in here and in S7 use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
+We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Unless noted, variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models descriptions use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
 
 ## S5.1 - Genetic diversity, experimental data
 
@@ -750,6 +752,62 @@ $$
 $$
 All other parameters and all priors are as in the corresponding univariate models.
 
+## S5.6 - validation of computer estimates of population sizes (Supplementary Material S2)
+
+To analyse for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
+
+$$
+n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
+P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
+\mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
+\mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
+$$
+
+The patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
+
+$$
+\begin{bmatrix}
+\alpha_{i} \\
+\gamma_{i} \\
+\end{bmatrix} \sim 
+\mathrm{MVNormal}(
+\begin{bmatrix}
+0\\
+0\\
+\end{bmatrix},\boldsymbol{\Omega}) \\
+\boldsymbol{\Omega} = 
+\begin{bmatrix}
+\sigma_{\alpha} & 0 \\
+0 & \sigma_{\gamma} \\
+\end{bmatrix} 
+\times \boldsymbol{\mathrm{R}} \times
+\begin{bmatrix}
+\sigma_{\alpha} & 0 \\
+0 & \sigma_{\gamma} \\
+\end{bmatrix} \\
+$$
+, where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ for fixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
+
+We ran a second version of this model, to determine whether computer macros presented systematic estimation biases. In this case, the parameter $\beta_{1}$, which denotes the (logit-transformed) average parasitism rate in the "computer estimates" model, was simply changed to be macro-specific: 
+$$
+P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
+\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i}\\
+$$
+, with the other parts of the model remaining unchanged.
+
+## S5.7 -  Validation of the experimental design (Supplementary Material S3)
+
+As a measure of dispersal distance, We used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
+
+$$ 
+\frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
+\mathrm{logit}(\mu_{i,m})= \beta_{\text{TREATMENT}[i]} + \alpha_{m}\\
+\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+$$
+As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
+
+
+
 # S6 - Supplementary figures for main text models (simulated data)
 
 For simulations, it can be useful to show a bit more precisely how well the theory-based model(s) fit the simulated data. (For experimental data, there are already plots filling that role in the main text)
@@ -872,8 +930,10 @@ data_genetics %>%
 
 # S7 - Summary tables for main text models
 
-We here present posterior means and 95% credible intervals for some parameters of interest of the models discussed in the main text. For conciseness, we:
+We here present posterior means and 95% credible intervals for some parameters of interest of the models discussed in the main text. For conciseness, we: 
+
 - focus on fixed effect parameters as they are the ones that interest us in the present study;
+
 - only present the information from the model actually discussed in the main text when there are two competing models (i.e. exponential vs. power for velocities).
 
 The interested reader can get the same information for all other parameters by running the corresponding `Rmd` scripts (scripts 1 and 3), which contain various summary calls. Parameter names in the tables below are as in **Supplementary Material S5**.
@@ -1049,66 +1109,6 @@ mod_popsize2 %>%
   kable_styling()
 
 ```
-
-
-# S8 - Model descriptions for models presented in Supplementary Materials
-
-(As in S5, all Beta models described here use the (mean, precision) parametrisation of the Beta distribution.)
-
-## S8.1 - validation of computer estimates of population sizes (Supplementary Material S2)
-
-To analyse for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
-
-$$
-n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
-P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
-\mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
-\mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
-$$
-
-The patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
-
-$$
-\begin{bmatrix}
-\alpha_{i} \\
-\gamma_{i} \\
-\end{bmatrix} \sim 
-\mathrm{MVNormal}(
-\begin{bmatrix}
-0\\
-0\\
-\end{bmatrix},\boldsymbol{\Omega}) \\
-\boldsymbol{\Omega} = 
-\begin{bmatrix}
-\sigma_{\alpha} & 0 \\
-0 & \sigma_{\gamma} \\
-\end{bmatrix} 
-\times \boldsymbol{\mathrm{R}} \times
-\begin{bmatrix}
-\sigma_{\alpha} & 0 \\
-0 & \sigma_{\gamma} \\
-\end{bmatrix} \\
-$$
-, where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ for fixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
-
-We ran a second version of this model, to determine whether computer macros presented systematic estimation biases. In this case, the parameter $\beta_{1}$, which denotes the (logit-transformed) average parasitism rate in the "computer estimates" model, was simply changed to be macro-specific: 
-$$
-P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i}\\
-$$
-, with the other parts of the model remaining unchanged.
-
-## S8.2 -  Validation of the experimental design (Supplementary Material S3)
-
-As a measure of dispersal distance, We used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
-
-$$ 
-\frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m})= \beta_{\text{TREATMENT}[i]} + \alpha_{m}\\
-\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
-$$
-As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
-
 
 
 # References
