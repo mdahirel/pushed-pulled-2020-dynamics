@@ -431,14 +431,14 @@ Nineteen microsatellite markers were developed by testing and multiplexing part 
 
 ## S4.2 - Genotyping and microsatellites description  
 
-All *T. brassicae* wasps were stored in 70% ethanol before DNA extraction. DNA was extracted from each individual wasp, either with the prepGem Insect DNA Extraction kit from Zygem (extraction volume of 15µL per individual, using 0.375µL of prepGem enzyme; samples were placed in a thermocycler for 2 hours at 75°C and 5 minutes at 95°C), or with the Quick Extract DNA Extraction Solution from Lucigen (extraction volume of 15µL per individual; samples were placed in a thermocycler for 10 minutes at 65°C and 2 minutes at 98°C). All DNA extracts were stored at -20°C.  
+All sequenced *T. brassicae* wasps were stored in 70% ethanol before DNA extraction. DNA was extracted from each individual wasp, either with the prepGem Insect DNA Extraction kit from Zygem (extraction volume of 15µL per individual, using 0.375µL of prepGem enzyme; samples were placed in a thermocycler for 2 hours at 75°C and 5 minutes at 95°C), or with the Quick Extract DNA Extraction Solution from Lucigen (extraction volume of 15µL per individual; samples were placed in a thermocycler for 10 minutes at 65°C and 2 minutes at 98°C). All DNA extracts were stored at -20°C.  
 
 For microsatellite amplification, 2µl of genomic DNA were used within a 10µL final PCR reaction consisting of 5µL of the QIAGEN PCR multiplex solution, 1µL of the primer mix of the 19 primers reverse and forward (1µM each), and water. PCR conditions were as followed: initial denaturation at 95°C for 15 min; 30 cycles of denaturation (94°C, 30s), annealing (60°C, 90s) and elongation (72°C, 60s); final extension at 60°C for 30 min.
 For each individual, 1.5µL of the PCR product was mixed with 9.8µL of a mix obtained from 1mL HiDi formamide and 20µL of 500 LIZ Size Standard (Applied Biosystems). Products were then electrophoresed using an ABI PRISM 3130XL sequencer (Applied Biosystems). Finally, genotypes were scored using Gene Marker version 1.75 (SoftGenetics).
 
 All loci are polymorphic when looking at the entire dataset (Supplementary Table S4.1). Information on each marker, including allelic richness over the whole set of genotyped individuals, is presented Supplementary Table S4.1. Information about genetic diversity and whether alleles frequencies followed the Hardy-Weinberg equilibrium **at the start of the experiment** is presented Supplementary Table S4.2. 
 
-Summary data confirm that all 3 strains are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis). So, barring multiple mutations, this seemingly fixed locus must simply represent sampling error at t = 0.
+Summary data Table S4.2 confirm that all 3 source strains (genetic mixes) are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis; data not shown here). So, barring multiple mutations, this seemingly fixed locus must simply represent sampling error at t = 0.
 
 
 **Supplementary Table S4.1**: Primer pairs used for the PCR set of the multiplex panel. For each of the 19 loci, the table includes: the repeat motifs in the sequence used to design primers, sequence and fluorescent dye label used for each primer, the observed number of alleles and the allelic size range. 
@@ -529,7 +529,7 @@ seppop(genmat) %>% #we split by Mix, and for each mix we obtain some popgen metr
 
 # S5 - Detailed description of models
 
-We here describe the full structure of the models presented in the main text, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Unless noted, variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models descriptions use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
+We here describe the full structure of the models presented in the main text and supplementary materials, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Unless noted, variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models descriptions use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
 
 ## S5.1 - Genetic diversity, experimental data
 
@@ -546,7 +546,7 @@ $$
 \mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t)
 $$
 
-The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core or front) as follow:
+The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or front $x = 1$) as follow:
 
 $$
 \mathrm{logit}(\mu_{i,t=0}) = \beta_{0} + \alpha_{i}
@@ -619,9 +619,9 @@ In both experimental and simulation data, the location $X_{i,t}$ of the expansio
 
 $$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\ln (v_{i,t} \times t), \sigma_{d}) $$
 
-where $v_{i,t}$ denotes the expansion speed over the $t$ generations since release, and $\sigma{d}$ is the residual standard deviation of the log-distances.
+where $v_{i,t}$ denotes the expansion speed over the $t$ generations since release, and $\sigma_{d}$ is the residual standard deviation of the log-distances.
 
-The expansion speed $v_{i,y}$ can then be modelled as following:
+The expansion speed $v_{i,t}$ can then be modelled as following:
 
 $$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1))$$
 
@@ -683,7 +683,7 @@ $$
 
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
-We used the same weakly informative priors for $v_{\mathrm{TREATMENT}[t=1]}$, $v_{\mathrm{TREATMENT}[t \to \infty]}$ and $\lambda_{\mathrm{TREATMENT}}$: $\mathrm{Normal}(0,1)$ for all the fixed effects parameters,  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
+We used $\mathrm{Normal}(0,1)$ priors for all fixed effects parameters (except $\mathrm{logit}(v_{\text{TREATMENT}[i], t \to \infty})$ for simulated data, $\mathrm{Normal}(0,1.5)$). We used  $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for all standard deviations $\sigma$ and a LKJ prior $\mathrm{LKJcorr}(2)$ for the correlation matrix $\boldsymbol{\mathrm{R}}$
 
 Alternatively, one can assume (based on theory) that speed converges to the asymptote following an power law, rather than an exponential:
 
@@ -712,7 +712,7 @@ $$
 $$
 , with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
 
-## S5.5 - correlation between $K_{i}$ and $v_{i,t \to \infty}$, experimental data
+## S5.5 - Correlation between $K_{i}$ and $v_{i,t \to \infty}$, experimental data
 
 To analyse the among-replicate correlation between the asymptotic speed $v_{i,t \to \infty}$ and the carrying capacity $K_{i}$, we simply combine the two univariate models described above for front location (S5.3) and population size (S5.4). We simply adjust the replicate-level random effect variance-covariance matrix to (1) link the two model (2) make it treatment-specific, in order to obtain treatment-specific correlations ($i$ denotes the replicate, $j$ the treatment, and parameter names are as in S5.3 and S5.4):
 
@@ -754,7 +754,7 @@ All other parameters and all priors are as in the corresponding univariate model
 
 ## S5.6 - validation of computer estimates of population sizes (Supplementary Material S2)
 
-To analyse for each available patch $i$ computer estimates of parasitism rate $P_{i,m}$ (where $m$ is the estimating computer macro) with human counts of parasitised eggs $n_{i}$, we used the following bivariate mixed model:
+To compare computer estimates of parasitism rate $P_{i,m}$ with human counts of parasitised eggs $n_{i}$ (where $i$ is a given patch and $m$ is the estimating computer macro), we used the following bivariate mixed model:
 
 $$
 n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
@@ -797,7 +797,7 @@ $$
 
 ## S5.7 -  Validation of the experimental design (Supplementary Material S3)
 
-As a measure of dispersal distance, We used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
+As a measure of dispersal distance, we used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
 
 $$ 
 \frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
@@ -889,6 +889,7 @@ newdata %>%
   stat_lineribbon(aes(x = ticks, y = .value/ticks),
                   .width = 0.95, alpha = 0.5, point_interval = mean_hdi) +
   scale_y_continuous("mean speed since start of experiment (patches per generation)") +
+  scale_x_continuous("time since start (generations)")+
   facet_grid(rows=vars(Kbis), cols=vars(treatment)) +
   theme_half_open(11) +
   background_grid(colour.major = "grey95", colour.minor = "grey95")+
@@ -896,7 +897,7 @@ newdata %>%
   theme(legend.position = "none")
 ```
 
-**Figure S6.1** Observed and predicted velocities (distance to the start divided time since start) as a function of $K$, time since start and treatment. Observed simulation data are summarised by their means and 2.5/97.5% quantiles to keep the figure readable. The mean prediction curves are displayed along with their 95% credible bands. Note how predictions based on the power-law model start to systematically underestimate true speeds towards the end of the simulations, while the exponential predictions catch the fact speed has converged.
+**Figure S6.1** Observed and predicted expansion velocities (distance to the start divided time since start) as a function of $K$, time since start and treatment. Observed simulation data are summarised by their means and 2.5/97.5% quantiles to keep the figure readable. The mean prediction curves are displayed along with their 95% credible bands. Note how predictions based on the power-law model start to systematically underestimate true speeds towards the end of the simulations, while the exponential predictions catch the fact speed has converged.
 
 ## Genetic diversity
 
@@ -926,7 +927,7 @@ data_genetics %>%
   background_grid(colour.major = "grey95", colour.minor = "grey95")
 ```
 
-**Figure S6.2** Observed (colored lines) and predicted (grey bands) among-replicate genetic variances as a function of $K$, time since start and treatment. The mean prediction curves are displayed along with their 95% credible bands.
+**Figure S6.2** Observed (colored lines) and predicted (grey bands) among-replicate genetic variances in simulations as a function of $K$, time since start and treatment. The mean prediction curves are displayed along with their 95% credible bands.
 
 # S7 - Summary tables for main text models
 
@@ -936,7 +937,7 @@ We here present posterior means and 95% credible intervals for some parameters o
 
 - only present the information from the model actually discussed in the main text when there are two competing models (i.e. exponential vs. power for velocities).
 
-The interested reader can get the same information for all other parameters by running the corresponding `Rmd` scripts (scripts 1 and 3), which contain various summary calls. Parameter names in the tables below are as in **Supplementary Material S5**.
+The interested reader can get the same information for all other parameters by running the corresponding `Rmd` scripts (scripts 1 and 3 in archived code), which contain various summary calls. Parameter names in the tables below are as in **Supplementary Material S5**.
 
 ## Expansion velocity
 
