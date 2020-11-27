@@ -234,7 +234,7 @@ diff_obs_est <- preds %>%
 
 We then used a bivariate generalized linear mixed model approach to compare computer estimates and human counts, with a Beta family used for the former and a binomial distribution for the latter. Both models contained a fixed-effect intercept as well as random intercepts of population/patch identity, which were correlated. This approach accounts for the data structure and the fact both human- and computer-derived counts are likely estimated with error [@perezMethodeAnalyseImage2017]. It allows us to estimate the correlation between human counts and “consensus” computer counts obtained from pooling information from all macros. 
 
-Estimated and human-observed parasitism rates were highly correlated both on the latent logit scale (*r*= `r round(cor_latent$.value,2)` [`r round(cor_latent$.lower,2)`, `r round(cor_latent$.upper,2)`]) and on the observed scale (*r* = `r round(cor_obs$.value,2)` [`r round(cor_obs$.lower,2)`, `r round(cor_obs$.upper,2)`]). There was also no evidence of bias (predicted difference between average "human" and "computer" parasitism rates, in % of hosts per patch = `r round(diff_obs_est$diff,2)`% [`r round(diff_obs_est$.lower,2)`, `r round(diff_obs_est$.upper,2)`])
+Estimated and human-observed parasitism rates were highly correlated both on the latent logit scale (*r*= `r round(cor_latent$.value,2)` [`r round(cor_latent$.lower,2)`, `r round(cor_latent$.upper,2)`]) and on the observed scale (*r* = `r round(cor_obs$.value,2)` [`r round(cor_obs$.lower,2)`, `r round(cor_obs$.upper,2)`]). There was also no evidence of bias (predicted mean difference between "human" and "computer" parasitism rates, in % of hosts per patch = `r round(diff_obs_est$diff,2)`% [`r round(diff_obs_est$.lower,2)`, `r round(diff_obs_est$.upper,2)`])
 
 We then refitted this model, this time adding a fixed effect of the macro in the "computer estimates" submodel, to determine whether macros presented systematic biases. We found that the overall absence of bias of the "consensus" estimates (see above) actually resulted from the majority of macros slightly underpredicting human-observed parasitism rates while one consistently overpredicted them (**Supplementary Figure S2.1**).
 
@@ -436,9 +436,9 @@ All sequenced *T. brassicae* wasps were stored in 70% ethanol before DNA extract
 For microsatellite amplification, 2µl of genomic DNA were used within a 10µL final PCR reaction consisting of 5µL of the QIAGEN PCR multiplex solution, 1µL of the primer mix of the 19 primers reverse and forward (1µM each), and water. PCR conditions were as followed: initial denaturation at 95°C for 15 min; 30 cycles of denaturation (94°C, 30s), annealing (60°C, 90s) and elongation (72°C, 60s); final extension at 60°C for 30 min.
 For each individual, 1.5µL of the PCR product was mixed with 9.8µL of a mix obtained from 1mL HiDi formamide and 20µL of 500 LIZ Size Standard (Applied Biosystems). Products were then electrophoresed using an ABI PRISM 3130XL sequencer (Applied Biosystems). Finally, genotypes were scored using Gene Marker version 1.75 (SoftGenetics).
 
-All loci are polymorphic when looking at the entire dataset (Supplementary Table S4.1). Information on each marker, including allelic richness over the whole set of genotyped individuals, is presented Supplementary Table S4.1. Information about genetic diversity and whether alleles frequencies followed the Hardy-Weinberg equilibrium **at the start of the experiment** is presented Supplementary Table S4.2. 
+All loci are polymorphic when looking at the entire dataset (**Supplementary Table S4.1**). Information on each marker, including allelic richness over the whole set of genotyped individuals, is presented **Supplementary Table S4.1**. Information about genetic diversity and whether alleles frequencies followed the Hardy-Weinberg equilibrium **at the start of the experiment** is presented Supplementary Table S4.2. 
 
-Summary data Table S4.2 confirm that all 3 source strains (genetic mixes) are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis; data not shown here). So, barring multiple mutations, this seemingly fixed locus must simply represent sampling error at t = 0.
+Summary data **Table S4.2** confirm that all 3 source strains (genetic mixes) are polymorphic and diverse at the majority of the loci chosen, and that only a limited number of loci are polymorphic in 1 strain and fixed in the other 2. One locus has H0(t = 0) = 0 for all strains. However, we note that all loci do present variation in later generation samples (a prerequisite for keeping the locus for the analysis; data not shown here). So, barring multiple mutations, this seemingly fixed locus must simply represent sampling error at t = 0.
 
 
 **Supplementary Table S4.1**: Primer pairs used for the PCR set of the multiplex panel. For each of the 19 loci, the table includes: the repeat motifs in the sequence used to design primers, sequence and fluorescent dye label used for each primer, the observed number of alleles and the allelic size range. 
@@ -484,7 +484,7 @@ read_csv(here("data", "Trichogramma_microsatellite_description.csv")) %>%
   collapse_rows(5, valign = "top") ##
 ```
 
-**Supplementary Table S4.2**: Population genetics statistics **at the start of the experiment** (Generation 0 samples). At each locus described Supplementary Table S4.1, the number of individuals successfully genotyped (*N*, excluding missing alleles),the observed heterozygosity (*H~O~*), the expected heterozygosity (*H~E~*, @neiAnalysisGeneDiversity1973) and the *p*-value for the exact test of Hardy–Weinberg equilibrium were computed separately for each of the 3 genetic mixes used (Mix1, Mix2, Mix3; See Supplementary Material S1). Statistics were computed using the `adegenet` [@jombartAdegenetPackageMultivariate2008] and `pegas` [@paradisPegasPackagePopulation2010] R packages. Note that all loci were found to be polymorphic when analysing the whole set of wasps used in the experiment (See Supplementary Table S4.1).
+**Supplementary Table S4.2**: Population genetics statistics **at the start of the experiment** (Generation 0 samples). At each locus described **Supplementary Table S4.1**, the number of individuals successfully genotyped (*N*, excluding missing alleles),the observed heterozygosity (*H~O~*), the expected heterozygosity (*H~E~*, @neiAnalysisGeneDiversity1973) and the *p*-value for the exact test of Hardy–Weinberg equilibrium were computed separately for each of the 3 genetic mixes used (Mix1, Mix2, Mix3; See Supplementary Material S1). Statistics were computed using the `adegenet` [@jombartAdegenetPackageMultivariate2008] and `pegas` [@paradisPegasPackagePopulation2010] R packages. Note that all loci were found to be polymorphic when analysing the whole set of wasps used in the experiment (See **Supplementary Table S4.1**).
 
 ```{r table-microsat2}
 
@@ -533,7 +533,7 @@ We here describe the full structure of the models presented in the main text and
 
 ## S5.1 - Genetic diversity, experimental data
 
-We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a patch in replicate $i$, with $x$ denoting the location of that patch (0 for core patches, 1 for front patches) and $t$ the number of generations since release, the following way:
+We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a patch in replicate $i$, with $x$ denoting the location of that patch (0 for core patches, 1 for edge/front patches) and $t$ the number of generations since release, the following way:
 
 $$ 
 \mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu )
@@ -546,7 +546,7 @@ $$
 \mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t)
 $$
 
-The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or front $x = 1$) as follow:
+The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or edge $x = 1$) as follow:
 
 $$
 \mathrm{logit}(\mu_{i,t=0}) = \beta_{0} + \alpha_{i}
@@ -557,7 +557,7 @@ $$
 $$
 (with $\mathrm{logit}$ and $\log_{10}$ transformations here to ensure both parameters stay within bounds). 
 
-Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "front" are not distinct). In addition, both the average decline rate and the front-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
+Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "edge" are not distinct). In addition, both the average decline rate and the edge-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
 
 The random effects are distributed as following: 
 
@@ -606,7 +606,7 @@ $$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi)$$
 
 $$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)) $$ 
 
-where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and so only depends on the initial allelic distribution, not on treatment or patch type), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. front) as in the "experimental" model.
+where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and so only depends on the initial allelic distribution, not on treatment or patch type), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. edge) as in the "experimental" model.
 
 We put the same priors on $\log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($\mathrm{Normal}(0, 1)$ and $\mathrm{Half\mbox{-}Normal}(0, 1)$, respectively), for the same reasons. We put a stronger, informative prior on $\mathrm{logit}(V_{max})$ :
 
@@ -691,7 +691,7 @@ $$
 v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times t^{-\lambda_{i}}
 $$
 
-(with all other elements of the models remaining otherwise unchanged). However, model comparison (see code) show that performs much worse than the exponential in the context of the simulated data.
+(with all other elements of the models remaining otherwise unchanged). However, model comparison (see code) show this performs much worse than the exponential in the context of the simulated data.
 
 ## S5.4 - Population size in core patch, experimental data
 
@@ -714,7 +714,7 @@ $$
 
 ## S5.5 - Correlation between $K_{i}$ and $v_{i,t \to \infty}$, experimental data
 
-To analyse the among-replicate correlation between the asymptotic speed $v_{i,t \to \infty}$ and the carrying capacity $K_{i}$, we simply combine the two univariate models described above for front location (S5.3) and population size (S5.4). We simply adjust the replicate-level random effect variance-covariance matrix to (1) link the two model (2) make it treatment-specific, in order to obtain treatment-specific correlations ($i$ denotes the replicate, $j$ the treatment, and parameter names are as in S5.3 and S5.4):
+To analyse the among-replicate correlation between the asymptotic speed $v_{i,t \to \infty}$ and the carrying capacity $K_{i}$, we simply combine the two univariate models described above for front location (**S5.3**) and population size (**S5.4**). We simply adjust the replicate-level random effect variance-covariance matrix to (1) link the two model (2) make it treatment-specific, in order to obtain treatment-specific correlations ($i$ denotes the replicate, $j$ the treatment, and parameter names are as in **S5.3** and **S5.4**):
 
 $$
 \begin{bmatrix}
