@@ -543,7 +543,7 @@ where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the distribution
 Based on theory, we expect average genetic diversity to decline exponentially with time: 
 
 $$ 
-\mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t)
+\mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t).
 $$
 
 The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or edge $x = 1$) as follow:
@@ -604,41 +604,41 @@ As an alternative, we can use the model proposed by Gandhi *et al.* [-@gandhiCoo
 
 $$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi)$$
 
-$$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)) $$ 
+$$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)),$$ 
 
 where $V_{max}$ is both the asymptotic variance (once all patches have reached fixation) and the product of initial allele frequencies (and so only depends on the initial allelic distribution, not on treatment or patch type), and $\lambda$ a rate of decay of genetic diversity, which varies between treatments and locations (core vs. edge) as in the "experimental" model.
 
 We put the same priors on $\log_{10}(\lambda)$ and $1/\phi$  as in the experimental models ($\mathrm{Normal}(0, 1)$ and $\mathrm{Half\mbox{-}Normal}(0, 1)$, respectively), for the same reasons. We put a stronger, informative prior on $\mathrm{logit}(V_{max})$ :
 
-$$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 0.5) $$
-, as the expected asymptotic among-replicate variance is 0.25 for the case of a randomly distributed and randomly fixating locus with two alleles ($p(1-p)$ with $p$ = 0.5).
+$$ \mathrm{logit}(V_{max}) \sim \mathrm{Normal}(\mathrm{logit}(0.25), 0.5), $$
+as the expected asymptotic among-replicate variance is 0.25 for the case of a randomly distributed and randomly fixating locus with two alleles ($p(1-p)$ with $p$ = 0.5).
 
 ## S5.3 - Front velocity, experimental and simulated data
 
 In both experimental and simulation data, the location $X_{i,t}$ of the expansion front of the $i$th replicate after $t$ generations can be modelled as follow:
 
-$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\ln (v_{i,t} \times t), \sigma_{d}) $$
+$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\log (v_{i,t} \times t), \sigma_{d}) $$
 
 where $v_{i,t}$ denotes the expansion speed over the $t$ generations since release, and $\sigma_{d}$ is the residual standard deviation of the log-distances.
 
 The expansion speed $v_{i,t}$ can then be modelled as following:
 
-$$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1))$$
+$$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1)),$$
 
-, that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t \to \infty}$, with the rate of exponential "decay" to the asymptotic speed being $\lambda_{i}$.
+that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,t \to \infty}$, with the rate of exponential "decay" to the asymptotic speed being $\lambda_{i}$.
   
 In the experiment, all three parameters depend on treatment, and on replicate identity:
 
 $$
-\ln(v_{i,t=1}) = \ln(v_{\text{TREATMENT}[i], t=1}) + \alpha_{i}
+\log(v_{i,t=1}) = \log(v_{\text{TREATMENT}[i], t=1}) + \alpha_{i}
 $$
 
 $$
-\ln(v_{i,t \to \infty}) = \ln(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i}
+\log(v_{i,t \to \infty}) = \log(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i}
 $$
 
 $$
-log_{10}(\lambda_{i}) = log_{10}(\lambda_{\text{TREATMENT}[i]}) + \zeta_{i}
+log_{10}(\lambda_{i}) = log_{10}(\lambda_{\text{TREATMENT}[i]}) + \zeta_{i}.
 $$
 
 In simulated data, we fixed $v_{i,t=1} = 1$ (see main text for rationale), we logit-transformed $v_{i,t \to \infty}$ rather than log-transforming it (because speeds were constrained between 0 and 1):
@@ -703,14 +703,14 @@ P_{i,t,m} \sim \mathrm{Beta}(K_{i,m}, \phi) \\
 \eta_{i} \sim \mathrm{Normal}(0,\sigma_{\eta}) \\
 \theta_{m} \sim \mathrm{Normal}(0,\sigma_{\theta}) \\
 $$
-, where $K$ are the mean carrying capacities, $\eta$ denote random effects of replicate and $\theta$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
+where $K$ are the mean carrying capacities, $\eta$ denote random effects of replicate and $\theta$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 However, posterior checks revealed this model predicted more variability than was in the data, like for genetic experimental data. So, like with genetic experimental data, we shifted to a Student model on logit-transformed data:
 
 $$ 
-\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu) \\
+\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu), \\
 $$
-, with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
+with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
 
 ## S5.5 - Correlation between $K_{i}$ and $v_{i,t \to \infty}$, experimental data
 
@@ -748,7 +748,7 @@ $$
 0 & \sigma_{\gamma[j]} & 0 & 0 \\
 0 & 0 & \sigma_{\zeta[j]} & 0 \\
 0 & 0 & 0 & \sigma_{\eta[j]} \\
-\end{bmatrix} 
+\end{bmatrix}. 
 $$
 All other parameters and all priors are as in the corresponding univariate models.
 
@@ -762,8 +762,7 @@ P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
 \mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
 \mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
 $$
-
-The patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
+in which the patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
 
 $$
 \begin{bmatrix}
@@ -786,14 +785,14 @@ $$
 0 & \sigma_{\gamma} \\
 \end{bmatrix} \\
 $$
-, where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ for fixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
+where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ for fixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
 
 We ran a second version of this model, to determine whether computer macros presented systematic estimation biases. In this case, the parameter $\beta_{1}$, which denotes the (logit-transformed) average parasitism rate in the "computer estimates" model, was simply changed to be macro-specific: 
 $$
 P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i}\\
+\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i},\\
 $$
-, with the other parts of the model remaining unchanged.
+with the other parts of the model remaining unchanged.
 
 ## S5.7 -  Validation of the experimental design (Supplementary Material S3)
 
@@ -802,7 +801,7 @@ As a measure of dispersal distance, we used the mean distance from release $\bar
 $$ 
 \frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
 \mathrm{logit}(\mu_{i,m})= \beta_{\text{TREATMENT}[i]} + \alpha_{m}\\
-\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}) \\
+\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}). \\
 $$
 As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
 
@@ -988,7 +987,7 @@ mod_front %>%
   mutate(parameter = str_split_fixed(name, "_", 3)[, 2]) %>%
   select(parameter, treatment, entry) %>%
   pivot_wider(names_from = treatment, values_from = entry) %>%
-  mutate(name = c("$\\log_{10}(\\lambda)$", "$\\ln(v_{t \\to \\infty})$", "$\\ln(v_{t = 1})$")) %>%
+  mutate(name = c("$\\log_{10}(\\lambda)$", "$\\log(v_{t \\to \\infty})$", "$\\log(v_{t = 1})$")) %>%
   select(name, reference, `reduced connectivity`) %>%
   column_to_rownames(var = "name") %>%
   kable(format = "html") %>%
