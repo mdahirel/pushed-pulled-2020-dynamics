@@ -536,7 +536,7 @@ We here describe the full structure of the models presented in the main text and
 We can describe the genetic diversity (expected heterozygosity) $H_{x,i,t}$ of a patch in replicate $i$, with $x$ denoting the location of that patch (0 for core patches, 1 for edge/front patches) and $t$ the number of generations since release, the following way:
 
 $$ 
-\mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu )
+\mathrm{logit}(H_{x,i,t}) \sim \mathrm{StudentT}(\mathrm{logit}(\mu_{x,i,t}) , \sigma_{d} , \nu ),
 $$
 where $\mu_{x,i,t}$ is the mean genetic diversity, $\sigma_{d}$ the distribution scale parameter and $\nu$ the number of degrees of freedom. 
 
@@ -546,20 +546,17 @@ $$
 \mu_{x,i,t} =   \mu_{i,t=0} \times  \exp(-\lambda_{x,i} \times t).
 $$
 
-The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or edge $x = 1$) as follow:
+The two parameters $\mu_{i,t=0}$ (initial diversity) and  $\lambda_{x,i}$ (rate of decline) depend on replicate, treatment (reference or reduced connectivity) and location (core $x = 0$ or edge $x = 1$) as follows:
 
 $$
-\mathrm{logit}(\mu_{i,t=0}) = \beta_{0} + \alpha_{i}
-$$
-
-$$
+\mathrm{logit}(\mu_{i,t=0}) = \beta_{0} + \alpha_{i}, \\
 \log_{10}(\lambda_{x,i}) = \beta_{1[\text{TREATMENT}[i]]}+\beta_{2[\text{TREATMENT[i]}]}(x-0.5) + \gamma_{i} + \zeta_{i}(x-0.5)
 $$
 (with $\mathrm{logit}$ and $\log_{10}$ transformations here to ensure both parameters stay within bounds). 
 
 Initial diversity is thus independent of treatment and location, and only depends on replicate identity through a random effect $\alpha_{i}$, while the rate of decline $\lambda$ depends on treatment, location and their interaction. (Note the centring of $x$ in the formula, and that $x$ is set to 0.5 at $t$ = 0, so that the effect of location on $\lambda$ cancels out at the start of the experiment, when "core" and "edge" are not distinct). In addition, both the average decline rate and the edge-core difference depend on replicate, which is accounted for through the random effect parameters $\gamma_{i}$ and $\zeta_{i}$ respectively.
 
-The random effects are distributed as following: 
+The random effects are distributed as follows: 
 
 $$
 \begin{bmatrix}
@@ -572,7 +569,7 @@ $$
 0\\
 0\\
 0\\
-\end{bmatrix},\boldsymbol{\Omega})
+\end{bmatrix},\boldsymbol{\Omega}),
 $$
 with $\boldsymbol{\Omega}$ the covariance matrix:
 
@@ -588,7 +585,7 @@ $$
 \sigma_{\alpha} & 0 & 0 \\
 0 & \sigma_{\gamma} & 0 \\
 0 & 0 & \sigma_{\zeta} \\
-\end{bmatrix}
+\end{bmatrix},
 $$
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
 
@@ -602,7 +599,7 @@ In our simulations, it is not possible to analyse genetic diversity using the mo
 
 As an alternative, we can use the model proposed by Gandhi *et al.* [-@gandhiCooperationMitigatesDiversity2019] in which, for a given treatment and location combination $j$ at a given time $t$ (in generations from release), the expected among-replicate variance in the frequencies of either one of the two alleles $V_{j,t}$ can be described this way:
 
-$$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi)$$
+$$ V_{j,t} \sim \mathrm{Beta}(\mu_{j,t}, \phi),$$
 
 $$ \mu_{j,t} =   V_{\max} \times  (1 - \exp(-\lambda_{j} \times t)),$$ 
 
@@ -615,13 +612,13 @@ as the expected asymptotic among-replicate variance is 0.25 for the case of a ra
 
 ## S5.3 - Front velocity, experimental and simulated data
 
-In both experimental and simulation data, the location $X_{i,t}$ of the expansion front of the $i$th replicate after $t$ generations can be modelled as follow:
+In both experimental and simulation data, the location $X_{i,t}$ of the expansion front of the $i$th replicate after $t$ generations can be modelled as follows:
 
-$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\log (v_{i,t} \times t), \sigma_{d}) $$
+$$ X_{i,t} \sim \mathrm{Log\mbox{-}Normal}(\log (v_{i,t} \times t), \sigma_{d}),$$
 
 where $v_{i,t}$ denotes the expansion speed over the $t$ generations since release, and $\sigma_{d}$ is the residual standard deviation of the log-distances.
 
-The expansion speed $v_{i,t}$ can then be modelled as following:
+The expansion speed $v_{i,t}$ can then be modelled as follows:
 
 $$v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times \exp(-\lambda_{i} \times (t -1)),$$
 
@@ -630,25 +627,19 @@ that is, moving from an initial speed $v_{i,t=1}$ to an equilibrium speed $v_{i,
 In the experiment, all three parameters depend on treatment, and on replicate identity:
 
 $$
-\log(v_{i,t=1}) = \log(v_{\text{TREATMENT}[i], t=1}) + \alpha_{i}
-$$
-
-$$
-\log(v_{i,t \to \infty}) = \log(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i}
-$$
-
-$$
-log_{10}(\lambda_{i}) = log_{10}(\lambda_{\text{TREATMENT}[i]}) + \zeta_{i}.
+\log(v_{i,t=1}) = \log(v_{\text{TREATMENT}[i], t=1}) + \alpha_{i}, \\
+\log(v_{i,t \to \infty}) = \log(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i},\\
+\log_{10}(\lambda_{i}) = \log_{10}(\lambda_{\text{TREATMENT}[i]}) + \zeta_{i}.
 $$
 
 In simulated data, we fixed $v_{i,t=1} = 1$ (see main text for rationale), we logit-transformed $v_{i,t \to \infty}$ rather than log-transforming it (because speeds were constrained between 0 and 1):
 
 $$
-\mathrm{logit}(v_{i,t \to \infty}) = \mathrm{logit}(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i}
+\mathrm{logit}(v_{i,t \to \infty}) = \mathrm{logit}(v_{\text{TREATMENT}[i], t \to \infty}) + \gamma_{i},
 $$
 and we rescaled $(t -1)$ to $(t - 1) /10$ (so expressed elapsed time in 10s of generations), to facilitate convergence while keeping the same weakly informative priors. The model is otherwise unchanged.
 
-In both simulated and experimental data, the random effects $\alpha_{i}$, $\gamma_{i}$ and $\zeta_{i}$ are distributed as following: 
+In both simulated and experimental data, the random effects $\alpha_{i}$, $\gamma_{i}$ and $\zeta_{i}$ are distributed as follows: 
 
 $$
 \begin{bmatrix}
@@ -661,7 +652,7 @@ $$
 0\\
 0\\
 0\\
-\end{bmatrix},\boldsymbol{\Omega})
+\end{bmatrix},\boldsymbol{\Omega}),
 $$
 
 with $\boldsymbol{\Omega}$ the covariance matrix:
@@ -678,7 +669,7 @@ $$
 \sigma_{\alpha} & 0 & 0 \\
 0 & \sigma_{\gamma} & 0 \\
 0 & 0 & \sigma_{\zeta} \\
-\end{bmatrix}
+\end{bmatrix},
 $$
 
 where $\sigma_{\alpha}$, $\sigma_{\gamma}$ and $\sigma_{\zeta}$ are the random effect standard deviations for each parameter, and $\boldsymbol{\mathrm{R}}$ the corresponding correlation matrix.
@@ -688,27 +679,27 @@ We used $\mathrm{Normal}(0,1)$ priors for all fixed effects parameters (except $
 Alternatively, one can assume (based on theory) that speed converges to the asymptote following an power law, rather than an exponential:
 
 $$
-v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times t^{-\lambda_{i}}
+v_{i,t} = v_{i,t \to \infty} + (v_{i,t=1} - v_{i,t \to \infty}) \times t^{-\lambda_{i}},
 $$
 
 (with all other elements of the models remaining otherwise unchanged). However, model comparison (see code) show this performs much worse than the exponential in the context of the simulated data.
 
 ## S5.4 - Population size in core patch, experimental data
 
-We first assumed the parasitism rate in the release patch $P_{i,t,m}$ observed by macro $m$ in replicate $i$ after $t$ generations can be modelled using a Beta model as follow:
+We first assumed the parasitism rate in the release patch $P_{i,t,m}$ observed by macro $m$ in replicate $i$ after $t$ generations can be modelled using a Beta model as follows:
 
 $$ 
-P_{i,t,m} \sim \mathrm{Beta}(K_{i,m}, \phi) \\
-\mathrm{logit}(K_{i,m}) = \beta_{\text{TREATMENT}[i]} +\eta_{i} + \theta_{m}\\
-\eta_{i} \sim \mathrm{Normal}(0,\sigma_{\eta}) \\
-\theta_{m} \sim \mathrm{Normal}(0,\sigma_{\theta}) \\
+P_{i,t,m} \sim \mathrm{Beta}(K_{i,m}, \phi), \\
+\mathrm{logit}(K_{i,m}) = \beta_{\text{TREATMENT}[i]} +\eta_{i} + \theta_{m},\\
+\eta_{i} \sim \mathrm{Normal}(0,\sigma_{\eta}), \\
+\theta_{m} \sim \mathrm{Normal}(0,\sigma_{\theta}),
 $$
 where $K$ are the mean carrying capacities, $\eta$ denote random effects of replicate and $\theta$ random effects accounting for systematic between-macro differences. Priors were the same as in previous Beta models, that is a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for both random effect standard deviations $\sigma$ and for $1/\phi$.
 
 However, posterior checks revealed this model predicted more variability than was in the data, like for genetic experimental data. So, like with genetic experimental data, we shifted to a Student model on logit-transformed data:
 
 $$ 
-\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu), \\
+\mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu),
 $$
 with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
 
@@ -729,7 +720,7 @@ $$
 0\\
 0\\
 0\\
-\end{bmatrix},\boldsymbol{\Omega}_{j})
+\end{bmatrix},\boldsymbol{\Omega}_{j}),
 $$
 
 with $\boldsymbol{\Omega}_{j}$ the now treatment-specific covariance matrix and the corresponding correlation matrix:
@@ -757,12 +748,12 @@ All other parameters and all priors are as in the corresponding univariate model
 To compare computer estimates of parasitism rate $P_{i,m}$ with human counts of parasitised eggs $n_{i}$ (where $i$ is a given patch and $m$ is the estimating computer macro), we used the following bivariate mixed model:
 
 $$
-n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}) \\
-P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi) \\
-\mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} \\
-\mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i} \\
+n_{i} \sim \mathrm{Binomial}(N = 450, p_{i}), \\
+P_{i,m} \sim \mathrm{Beta}(\mu_{i}, \phi), \\
+\mathrm{logit}(p_{i}) = \beta_{0} + \alpha_{i} ,\\
+\mathrm{logit}(\mu_{i}) = \beta_{1} + \gamma_{i},
 $$
-in which the patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follow:
+in which the patch-level random effects $\alpha$ and $\gamma$ are correlated and distributed as follows:
 
 $$
 \begin{bmatrix}
@@ -773,7 +764,7 @@ $$
 \begin{bmatrix}
 0\\
 0\\
-\end{bmatrix},\boldsymbol{\Omega}) \\
+\end{bmatrix},\boldsymbol{\Omega}), \\
 \boldsymbol{\Omega} = 
 \begin{bmatrix}
 \sigma_{\alpha} & 0 \\
@@ -783,25 +774,25 @@ $$
 \begin{bmatrix}
 \sigma_{\alpha} & 0 \\
 0 & \sigma_{\gamma} \\
-\end{bmatrix} \\
+\end{bmatrix},
 $$
 where $\Omega$ and $\boldsymbol{\mathrm{R}}$ again refer the the covariance and correlation matrices, respectively. As in similar models described above, we use a $\mathrm{Normal}(0,1.5)$ for fixed effect ($\beta$) parameters, a $\mathrm{Half\mbox{-}Normal}(0,1)$ prior for standard deviations $\sigma$ and for $1/\phi$, and a $\mathrm{LKJCorr}(2)$ prior for the correlation matrix $\boldsymbol{\mathrm{R}}$. 
 
 We ran a second version of this model, to determine whether computer macros presented systematic estimation biases. In this case, the parameter $\beta_{1}$, which denotes the (logit-transformed) average parasitism rate in the "computer estimates" model, was simply changed to be macro-specific: 
 $$
-P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i},\\
+P_{i,m} \sim \mathrm{Beta}(\mu_{i,m}, \phi), \\
+\mathrm{logit}(\mu_{i,m}) = \beta_{1[m]} + \gamma_{i},
 $$
 with the other parts of the model remaining unchanged.
 
 ## S5.7 -  Validation of the experimental design (Supplementary Material S3)
 
-As a measure of dispersal distance, we used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follow:
+As a measure of dispersal distance, we used the mean distance from release $\bar{D}_{i,m}$ between the eggs laid in a replicate $i$ (as observed by macro $m$) and the corresponding parental patch using data from the starting generation, when there were only 5 patches per replicate (including the release patch). This means $\bar{D}_{i,m}$ can only take values in the $\left]0, 4\right[$ range, and can be modelled as follows:
 
 $$ 
-\frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi) \\
-\mathrm{logit}(\mu_{i,m})= \beta_{\text{TREATMENT}[i]} + \alpha_{m}\\
-\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}). \\
+\frac{\bar{D}_{i,m}}{4} \sim \mathrm{Beta}(\mu_{i,m}, \phi), \\
+\mathrm{logit}(\mu_{i,m})= \beta_{\text{TREATMENT}[i]} + \alpha_{m},\\
+\alpha_{m} \sim \mathrm{Normal}(0,\sigma_{\alpha}).
 $$
 As in other Beta models, we used a $\mathrm{Normal}(0,1.5)$ prior for the treatment-specific intercepts $\beta$, and $\mathrm{Half\mbox{-}Normal}(0,1)$ priors for both the random effect standard deviation $\sigma_{\alpha}$ and $1/\phi$.
 
