@@ -7,7 +7,7 @@
 
  This repo contains all data and code needed to re-do the analyses and figures in our manuscript
 
-"Shifts from pulled to pushed range expansions caused by reduction of landscape connectedness"
+"Shifts from pulled to pushed range expansions caused by reduction of landscape connectivity"
 (by Maxime Dahirel, Aline Bertin, Marjorie Haond, Aurélie Blin, Eric Lombaert, Vincent Calcagno, Simon Fellous, Ludovic Mailleret, Thibaut Malausa, Elodie Vercken)
 
 (link to bioRxiv preprint [here](https://doi.org/10.1101/2020.05.13.092775))
