@@ -529,7 +529,7 @@ seppop(genmat) %>% #we split by Mix, and for each mix we obtain some popgen metr
 
 # S5 - Detailed description of models
 
-We here describe the full structure of the models presented in the main text and supplementary materials, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Unless noted, variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models descriptions use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(\mu,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(\mu,\sigma)$ distribution.
+We here describe the full structure of the models presented in the main text and supplementary materials, as well as associated prior choices. We try to follow throughout the same notation conventions as McElreath [-@mcelreathStatisticalRethinkingBayesian2020]. Unless noted, variable names and indices are reset from one model to the next, for simplicity, but similar names always refer to similar types of variables (fixed effects/random effects/correlations...). All Beta models descriptions use the (mean, precision) parametrisation of the Beta distribution. We use the $\mathrm{Half\mbox{-}Normal}(0,\sigma)$ notation to denote a half-normal distribution based on a $\mathrm{Normal}(0,\sigma)$ distribution.
 
 ## S5.1 - Genetic diversity, experimental data
 
@@ -701,7 +701,7 @@ However, posterior checks revealed this model predicted more variability than wa
 $$ 
 \mathrm{logit}(P_{i,t,m}) \sim \mathrm{StudentT}(\mathrm{logit}(K_{i,m}), \sigma_{d} , \nu),
 $$
-with everything unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
+with everything else unchanged. Priors are as in the previous model, so a $\mathrm{Normal}(0,1.5)$ for $\beta$s, and a $\mathrm{Half\mbox{-}Normal}(0,1)$ for random effect standard deviations $\sigma$. We again used a $\mathrm{Gamma}(2,0.1)$ prior for the Student-specific $\nu$.
 
 ## S5.5 - Correlation between $K_{i}$ and $v_{i,t \to \infty}$, experimental data
 
@@ -723,7 +723,7 @@ $$
 \end{bmatrix},\boldsymbol{\Omega}_{j}),
 $$
 
-with $\boldsymbol{\Omega}_{j}$ the now treatment-specific covariance matrix and the corresponding correlation matrix:
+with $\boldsymbol{\Omega}_{j}$ the now treatment-specific covariance matrix and $\boldsymbol{\mathrm{R}}_{j}$ the corresponding correlation matrix:
 
 $$
 \boldsymbol{\Omega}_{j} = 
@@ -887,7 +887,7 @@ newdata %>%
   theme(legend.position = "none")
 ```
 
-**Figure S6.1** Observed and predicted expansion velocities (distance to the start divided time since start) as a function of $K$, time since start and treatment. Observed simulation data are summarised by their means and 2.5/97.5% quantiles to keep the figure readable. The mean prediction curves are displayed along with their 95% credible bands. Note how predictions based on the power-law model start to systematically underestimate true speeds towards the end of the simulations, while the exponential predictions catch the fact speed has converged.
+**Figure S6.1** Observed and predicted expansion velocities (distance to the starting patch divided by time since start) as a function of $K$, time since start and treatment. Observed simulation data are summarised by their means and 2.5/97.5% quantiles to keep the figure readable. The mean prediction curves are displayed along with their 95% credible bands. Note how predictions based on the power-law model start to systematically underestimate true speeds towards the end of the simulations, while the exponential predictions catch the fact speed has converged.
 
 ## Genetic diversity
 
